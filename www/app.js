@@ -429,3 +429,27 @@ function _showApp() {
   // Fire permissions onboarding on first unlock
   document.dispatchEvent(new CustomEvent('ss:unlocked'));
 }
+
+// Overlay manager — dynamic app input wiring
+document.addEventListener('click', (e) => {
+  if (e.target.id === 'omAddAppBtn') {
+    const input = document.getElementById('omAppInput');
+    const name = input.value.trim();
+    if (!name) return;
+    OverlayManager.toggleCustomApp(name);
+    input.value = '';
+    // Refresh list
+    const list = document.getElementById('omAppList');
+    if (list) {
+      const apps = OverlayManager.getConfig().customApps;
+      list.innerHTML = apps.length === 0
+        ? '<p class="om-no-apps">No apps added yet.</p>'
+        : apps.map(a => `<div class="om-app-tag"><span>📱 ${a}</span><button class="om-app-remove" data-appid="${a}">✕</button></div>`).join('');
+    }
+  }
+  if (e.target.classList.contains('om-app-remove')) {
+    const appId = e.target.dataset.appid;
+    OverlayManager.toggleCustomApp(appId);
+    e.target.closest('.om-app-tag').remove();
+  }
+});

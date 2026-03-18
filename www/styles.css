@@ -407,3 +407,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 /* ── SVG ICON UTILITY ───────────────────────────── */
 [data-icon] svg { display: block; }
 .nav-btn [data-icon] { pointer-events: none; }
+
+/* Overlay manager — custom app input */
+.om-add-app-row { display:flex; gap:8px; margin-bottom:0.75rem; }
+.om-app-input { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--rs); color:var(--text); font-family:var(--mono); font-size:0.82rem; padding:0.55rem 0.8rem; outline:none; }
+.om-app-input::placeholder { color:var(--text3); }
+.om-add-app-btn { background:var(--accent-dim); border:1px solid rgba(127,255,178,0.3); border-radius:var(--rs); color:var(--accent); font-family:var(--font); font-weight:700; font-size:0.82rem; padding:0.55rem 1rem; cursor:pointer; }
+.om-app-list { display:flex; flex-direction:column; gap:7px; }
+.om-app-tag { display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:var(--rs); padding:0.6rem 0.8rem; font-size:0.82rem; }
+.om-app-remove { background:none; border:none; color:var(--text3); cursor:pointer; font-size:0.9rem; padding:2px 4px; }
+.om-no-apps { font-family:var(--mono); font-size:0.72rem; color:var(--text3); text-align:center; padding:1rem; }
