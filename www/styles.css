@@ -260,3 +260,150 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .tab-content:not(.hidden) .page-inner>*:nth-child(5){animation-delay:0.18s}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(9px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
 .shake{animation:shake 0.38s ease}
+
+
+/* ═══════════════════════════════════════════════════
+   v2.1 ADDITIONS
+═══════════════════════════════════════════════════ */
+
+/* ── PERMISSION ONBOARDING ─────────────────────── */
+.perm-screen {
+  position: fixed; inset: 0; z-index: 2000;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  padding: 2rem 1.5rem;
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+.perm-screen.perm-visible { opacity: 1; transform: translateY(0); pointer-events: all; }
+.perm-inner {
+  width: 100%; max-width: 340px;
+  display: flex; flex-direction: column; gap: 1rem;
+}
+.perm-progress { display: flex; gap: 6px; justify-content: center; margin-bottom: 0.5rem; }
+.perm-pip { width: 28px; height: 3px; border-radius: 2px; background: var(--border2); transition: background 0.3s; }
+.perm-pip.active { background: var(--accent); }
+.perm-icon-wrap {
+  width: 72px; height: 72px; border-radius: 20px;
+  background: color-mix(in srgb, var(--pcolor) 12%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--pcolor) 35%, transparent);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--pcolor); align-self: center;
+  box-shadow: 0 0 30px color-mix(in srgb, var(--pcolor) 15%, transparent);
+}
+.perm-icon svg { width: 36px; height: 36px; }
+.perm-title { font-size: 1.5rem; font-weight: 800; text-align: center; }
+.perm-why { font-size: 0.82rem; color: var(--text2); text-align: center; }
+.perm-points { list-style: none; display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1rem; }
+.perm-points li { font-size: 0.82rem; color: var(--text); line-height: 1.5; }
+.perm-note { font-family: var(--mono); font-size: 0.68rem; color: var(--text3); text-align: center; line-height: 1.5; }
+.perm-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 0.5rem; }
+.perm-allow-btn {
+  background: color-mix(in srgb, var(--pcolor) 15%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--pcolor) 40%, transparent);
+  border-radius: var(--r); color: var(--pcolor);
+  font-family: var(--font); font-size: 1rem; font-weight: 700;
+  padding: 0.9rem; cursor: pointer; transition: all 0.2s;
+}
+.perm-allow-btn:active { opacity: 0.8; }
+.perm-skip-btn {
+  background: none; border: none; color: var(--text3);
+  font-family: var(--mono); font-size: 0.75rem; cursor: pointer; padding: 0.4rem;
+}
+
+/* ── OVERLAY MANAGER MODAL ─────────────────────── */
+.om-modal {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: flex-end;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.om-modal.om-visible { opacity: 1; pointer-events: all; }
+.om-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
+.om-sheet {
+  position: relative; z-index: 1; width: 100%;
+  background: var(--bg3); border-top: 1px solid var(--border2);
+  border-radius: 22px 22px 0 0; padding: 0.75rem 1.2rem 2rem;
+  max-height: 90vh; overflow-y: auto;
+  transform: translateY(30px);
+  transition: transform 0.3s ease;
+}
+.om-modal.om-visible .om-sheet { transform: translateY(0); }
+.om-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 1rem; }
+.om-header { display: flex; align-items: center; gap: 10px; margin-bottom: 0.5rem; }
+.om-header-icon { color: var(--accent); }
+.om-header h3 { flex: 1; font-size: 1.1rem; font-weight: 700; }
+.om-close { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text2); width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.om-desc { font-size: 0.8rem; color: var(--text2); line-height: 1.5; margin-bottom: 1rem; }
+
+.om-modes { display: flex; flex-direction: column; gap: 7px; margin-bottom: 1rem; }
+.om-mode-btn {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--r); padding: 0.85rem 1rem;
+  cursor: pointer; text-align: left; transition: all 0.2s;
+  color: var(--text);
+}
+.om-mode-btn.active { border-color: var(--accent); background: var(--accent-dim); }
+.om-mode-icon { color: var(--text2); flex-shrink: 0; }
+.om-mode-btn.active .om-mode-icon { color: var(--accent); }
+.om-mode-text { flex: 1; }
+.om-mode-text strong { display: block; font-size: 0.88rem; font-weight: 600; }
+.om-mode-text span { font-size: 0.72rem; color: var(--text3); }
+.om-mode-check { color: var(--accent); opacity: 0; transition: opacity 0.2s; }
+.om-mode-btn.active .om-mode-check { opacity: 1; }
+
+.om-custom-apps { margin-bottom: 1rem; }
+.om-custom-apps.hidden { display: none; }
+.om-custom-label { font-family: var(--mono); font-size: 0.65rem; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.6rem; }
+.om-app-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 7px; }
+.om-app-btn {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--rs); padding: 0.65rem 0.8rem;
+  cursor: pointer; transition: all 0.2s; color: var(--text);
+}
+.om-app-btn.active { border-color: var(--accent); background: var(--accent-dim); }
+.om-app-icon { font-size: 1.1rem; }
+.om-app-name { flex: 1; font-size: 0.78rem; font-weight: 600; text-align: left; }
+.om-app-check { color: var(--accent); opacity: 0; }
+.om-app-btn.active .om-app-check { opacity: 1; }
+
+.om-strength { margin-bottom: 1rem; }
+.om-strength-row { display: flex; gap: 7px; }
+.om-str-btn {
+  flex: 1; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--rs); color: var(--text2);
+  font-family: var(--font); font-size: 0.8rem; font-weight: 600;
+  padding: 0.5rem; cursor: pointer; text-transform: capitalize;
+  transition: all 0.2s;
+}
+.om-str-btn.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+
+.om-native-note {
+  display: flex; gap: 8px; align-items: flex-start;
+  background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.2);
+  border-radius: var(--rs); padding: 0.8rem;
+}
+.om-native-note > div { color: #38bdf8; flex-shrink: 0; margin-top: 1px; }
+.om-native-note p { font-size: 0.75rem; color: var(--text2); line-height: 1.5; }
+.om-native-note strong { color: #38bdf8; }
+
+/* ── SETTINGS ADDITIONS ─────────────────────────── */
+.settings-item .si-badge {
+  font-family: var(--mono); font-size: 0.58rem;
+  background: var(--accent-dim); border: 1px solid rgba(127,255,178,0.3);
+  color: var(--accent); border-radius: 5px; padding: 2px 6px;
+}
+.timer-row { display: flex; align-items: center; gap: 8px; }
+.timer-select {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: var(--rs); color: var(--text);
+  font-family: var(--mono); font-size: 0.78rem;
+  padding: 0.3rem 0.5rem; cursor: pointer;
+}
+
+/* ── SVG ICON UTILITY ───────────────────────────── */
+[data-icon] svg { display: block; }
+.nav-btn [data-icon] { pointer-events: none; }

@@ -13,7 +13,7 @@
 </head>
 <body>
 
-<!-- ── LOCK SCREEN ─────────────────────────────── -->
+<!-- ── LOCK SCREEN ───────────────────────────────── -->
 <div id="lockScreen" class="lock-screen active">
   <canvas id="lockCanvas" class="lock-canvas"></canvas>
   <div class="lock-content">
@@ -48,51 +48,54 @@
       <button class="num-key del-key" id="delBtn">⌫</button>
     </div>
     <div class="lock-bottom-row">
-      <button class="lock-bio-btn" id="biometricBtn">👆 Fingerprint</button>
+      <button class="lock-bio-btn" id="biometricBtn">
+        <span data-icon="fingerprint" data-size="16"></span>
+        Fingerprint
+      </button>
     </div>
   </div>
 </div>
 
-<!-- ── INTRUDER ALERT ─────────────────────────── -->
+<!-- ── INTRUDER ALERT ─────────────────────────────── -->
 <div id="intruderAlert" class="intruder-alert hidden">
   <div class="intruder-inner">
     <div class="intruder-icon">📸</div>
-    <p>Intruder photo captured & encrypted.</p>
+    <p>Intruder photo captured &amp; encrypted.</p>
     <button id="intruderOk">OK</button>
   </div>
 </div>
 
-<!-- ── PANIC / DECOY CALCULATOR ───────────────── -->
+<!-- ── PANIC / DECOY CALCULATOR ───────────────────── -->
 <div id="panicOverlay" class="panic-overlay hidden">
   <div class="panic-content">
     <div class="calc-title">Calculator</div>
     <div class="calc-display" id="calcDisplay">0</div>
     <div class="calc-grid">
-      <button class="calc-btn op" onclick="calcPress('AC')">AC</button>
-      <button class="calc-btn op" onclick="calcPress('+/-')">+/-</button>
-      <button class="calc-btn op" onclick="calcPress('%')">%</button>
+      <button class="calc-btn op"     onclick="calcPress('AC')">AC</button>
+      <button class="calc-btn op"     onclick="calcPress('+/-')"  >+/-</button>
+      <button class="calc-btn op"     onclick="calcPress('%')">%</button>
       <button class="calc-btn accent" onclick="calcPress('/')">÷</button>
-      <button class="calc-btn" onclick="calcPress('7')">7</button>
-      <button class="calc-btn" onclick="calcPress('8')">8</button>
-      <button class="calc-btn" onclick="calcPress('9')">9</button>
+      <button class="calc-btn"        onclick="calcPress('7')">7</button>
+      <button class="calc-btn"        onclick="calcPress('8')">8</button>
+      <button class="calc-btn"        onclick="calcPress('9')">9</button>
       <button class="calc-btn accent" onclick="calcPress('*')">×</button>
-      <button class="calc-btn" onclick="calcPress('4')">4</button>
-      <button class="calc-btn" onclick="calcPress('5')">5</button>
-      <button class="calc-btn" onclick="calcPress('6')">6</button>
+      <button class="calc-btn"        onclick="calcPress('4')">4</button>
+      <button class="calc-btn"        onclick="calcPress('5')">5</button>
+      <button class="calc-btn"        onclick="calcPress('6')">6</button>
       <button class="calc-btn accent" onclick="calcPress('-')">−</button>
-      <button class="calc-btn" onclick="calcPress('1')">1</button>
-      <button class="calc-btn" onclick="calcPress('2')">2</button>
-      <button class="calc-btn" onclick="calcPress('3')">3</button>
+      <button class="calc-btn"        onclick="calcPress('1')">1</button>
+      <button class="calc-btn"        onclick="calcPress('2')">2</button>
+      <button class="calc-btn"        onclick="calcPress('3')">3</button>
       <button class="calc-btn accent" onclick="calcPress('+')">+</button>
-      <button class="calc-btn wide" onclick="calcPress('0')">0</button>
-      <button class="calc-btn" onclick="calcPress('.')">.</button>
+      <button class="calc-btn wide"   onclick="calcPress('0')">0</button>
+      <button class="calc-btn"        onclick="calcPress('.')">.</button>
       <button class="calc-btn accent" onclick="calcPress('=')">=</button>
     </div>
-    <div class="calc-exit-hint">← tap 5× to exit</div>
+    <div class="calc-exit-hint">← tap 5× anywhere to exit</div>
   </div>
 </div>
 
-<!-- ── MAIN APP ────────────────────────────────── -->
+<!-- ── MAIN APP ────────────────────────────────────── -->
 <div id="mainApp" class="main-app hidden">
 
   <!-- Header -->
@@ -102,11 +105,15 @@
       <span>ShieldSpace</span>
     </div>
     <div class="header-actions">
-      <button class="icon-btn" id="shakeIndicator" title="Shake to lock" style="font-size:1rem">📳</button>
-      <button class="icon-btn" id="blurToggleBtn" title="Privacy blur">
-        <svg viewBox="0 0 24 24" fill="none" width="18"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" stroke="currentColor" stroke-width="1.5"/></svg>
+      <button class="icon-btn" id="overlayManagerBtn" title="Overlay manager">
+        <span data-icon="layers" data-size="18"></span>
       </button>
-      <button class="icon-btn panic-btn" id="panicBtn">⚡</button>
+      <button class="icon-btn" id="blurToggleBtn" title="Privacy blur">
+        <span data-icon="eye" data-size="18"></span>
+      </button>
+      <button class="icon-btn panic-btn" id="panicBtn" title="Panic mode">
+        <span data-icon="zap" data-size="18"></span>
+      </button>
     </div>
   </header>
 
@@ -115,70 +122,94 @@
     <div class="status-item"><span class="status-dot off" id="blurDot"></span><span>Blur <em id="blurTxt">off</em></span></div>
     <div class="status-item"><span class="status-dot off" id="watchDot"></span><span>Watch <em id="watchTxt">off</em></span></div>
     <div class="status-item"><span class="status-dot off" id="shakeDot"></span><span>Shake <em id="shakeTxt">off</em></span></div>
-    <div class="status-item"><span class="status-dot on"></span><span>Vault <em>local</em></span></div>
+    <div class="status-item"><span class="status-dot off" id="overlayDot"></span><span>Overlay <em id="overlayTxt">off</em></span></div>
   </div>
 
   <!-- Nav -->
   <nav class="bottom-nav">
     <button class="nav-btn active" data-tab="dashboard">
-      <svg viewBox="0 0 24 24" fill="none" width="20"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
-      <span>Home</span>
+      <span data-icon="home" data-size="22"></span><span>Home</span>
     </button>
     <button class="nav-btn" data-tab="vault">
-      <svg viewBox="0 0 24 24" fill="none" width="20"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 11V7a4 4 0 118 0v4" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/></svg>
-      <span>Vault</span>
+      <span data-icon="vault" data-size="22"></span><span>Vault</span>
     </button>
     <button class="nav-btn" data-tab="browser">
-      <svg viewBox="0 0 24 24" fill="none" width="20"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M12 3c-2.5 3-4 5.5-4 9s1.5 6 4 9M12 3c2.5 3 4 5.5 4 9s-1.5 6-4 9M3 12h18" stroke="currentColor" stroke-width="1.5"/></svg>
-      <span>Browser</span>
+      <span data-icon="browser" data-size="22"></span><span>Browser</span>
     </button>
     <button class="nav-btn" data-tab="intruders">
-      <svg viewBox="0 0 24 24" fill="none" width="20"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.5"/></svg>
-      <span>Intel</span>
+      <span data-icon="intel" data-size="22"></span><span>Intel</span>
     </button>
     <button class="nav-btn" data-tab="settings">
-      <svg viewBox="0 0 24 24" fill="none" width="20"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.5"/></svg>
-      <span>Settings</span>
+      <span data-icon="settings" data-size="22"></span><span>Settings</span>
     </button>
   </nav>
 
-  <!-- ── DASHBOARD ──────────────────────────────── -->
+  <!-- ── DASHBOARD ────────────────────────────────── -->
   <div class="tab-content active" id="tab-dashboard">
     <div class="page-inner">
       <div class="greeting">
         <div class="greeting-a">A</div>
         <h1>Your space,<br/><em>your rules.</em></h1>
-        <p class="sub">AES-256 encrypted. Zero servers. Zero tracking.</p>
+        <p class="sub">AES-256 encrypted · Zero servers · Zero tracking</p>
       </div>
       <div class="quick-actions">
-        <button class="qa-card" data-goto="vault"><div class="qa-icon">🔐</div><div class="qa-label">Vault</div><div class="qa-sub">Encrypted notes & files</div></button>
-        <button class="qa-card" data-goto="browser"><div class="qa-icon">🌐</div><div class="qa-label">Browser</div><div class="qa-sub">Zero-trace browsing</div></button>
-        <button class="qa-card" data-goto="intruders"><div class="qa-icon">📸</div><div class="qa-label">Intel</div><div class="qa-sub" id="intruderCount">Intruder log</div></button>
-        <button class="qa-card panic-card" id="panicQA"><div class="qa-icon">⚡</div><div class="qa-label">Panic</div><div class="qa-sub">Hide everything</div></button>
+        <button class="qa-card" data-goto="vault">
+          <div class="qa-icon" data-icon="vault" data-size="28"></div>
+          <div class="qa-label">Vault</div><div class="qa-sub">Encrypted notes &amp; files</div>
+        </button>
+        <button class="qa-card" data-goto="browser">
+          <div class="qa-icon" data-icon="browser" data-size="28"></div>
+          <div class="qa-label">Browser</div><div class="qa-sub">Zero-trace browsing</div>
+        </button>
+        <button class="qa-card" data-goto="intruders">
+          <div class="qa-icon" data-icon="camera" data-size="28"></div>
+          <div class="qa-label">Intel</div><div class="qa-sub" id="intruderCount">Intruder log</div>
+        </button>
+        <button class="qa-card panic-card" id="panicQA">
+          <div class="qa-icon" data-icon="panic" data-size="28"></div>
+          <div class="qa-label">Panic</div><div class="qa-sub">Hide everything</div>
+        </button>
       </div>
       <div class="feature-cards">
         <div class="feat-card">
-          <div class="feat-header"><span class="feat-title">Privacy Blur</span>
+          <div class="feat-header">
+            <span class="feat-icon" data-icon="blur" data-size="18"></span>
+            <span class="feat-title">Privacy Blur</span>
             <label class="toggle-switch"><input type="checkbox" id="blurToggle"/><span class="toggle-track"></span></label>
           </div>
-          <p>Vignette dims edges after 4s of inactivity. Kills shoulder-surfing.</p>
+          <p>Edge vignette dims after 60s of inactivity — kills shoulder-surfing.</p>
         </div>
         <div class="feat-card">
-          <div class="feat-header"><span class="feat-title">Shake to Lock</span>
+          <div class="feat-header">
+            <span class="feat-icon" data-icon="shake" data-size="18"></span>
+            <span class="feat-title">Shake to Lock</span>
             <label class="toggle-switch"><input type="checkbox" id="shakeToggle"/><span class="toggle-track"></span></label>
           </div>
-          <p>Shake your phone = instant lock. No buttons needed.</p>
+          <p>Shake phone = instant lock. No buttons needed.</p>
         </div>
         <div class="feat-card">
-          <div class="feat-header"><span class="feat-title">Camera Watch</span>
+          <div class="feat-header">
+            <span class="feat-icon" data-icon="camera" data-size="18"></span>
+            <span class="feat-title">Camera Watch</span>
             <label class="toggle-switch"><input type="checkbox" id="cameraToggle"/><span class="toggle-track"></span></label>
           </div>
           <p>Auto-blurs if a second face appears near your screen.</p>
         </div>
+        <div class="feat-card" id="overlayCard" style="cursor:pointer">
+          <div class="feat-header">
+            <span class="feat-icon" data-icon="layers" data-size="18"></span>
+            <span class="feat-title">System Overlay</span>
+            <span class="si-badge" id="overlayModeBadge">off</span>
+          </div>
+          <p>Privacy blur on other apps — notifications, all apps, or your pick.</p>
+        </div>
       </div>
       <div class="clipboard-section">
-        <div class="section-title">🔏 Encrypted Clipboard</div>
-        <textarea id="clipInput" class="clip-input" placeholder="Paste sensitive text here — encrypts on save, clears in 30s…"></textarea>
+        <div class="section-title">
+          <span data-icon="copy" data-size="16"></span>
+          Encrypted Clipboard
+        </div>
+        <textarea id="clipInput" class="clip-input" placeholder="Paste sensitive text — encrypts on save, clears in 30s…"></textarea>
         <div class="clip-actions">
           <button class="clip-btn" id="clipSaveBtn">Encrypt &amp; Copy</button>
           <button class="clip-btn secondary" id="clipClearBtn">Clear</button>
@@ -188,31 +219,38 @@
     </div>
   </div>
 
-  <!-- ── VAULT ──────────────────────────────────── -->
+  <!-- ── VAULT ─────────────────────────────────────── -->
   <div class="tab-content hidden" id="tab-vault">
     <div class="page-inner">
       <div class="tab-header">
         <h2>Encrypted Vault</h2>
         <div style="display:flex;gap:8px">
-          <button class="add-btn secondary" id="exportVaultBtn">↑ Export</button>
-          <button class="add-btn" id="addNoteBtn">+ New</button>
+          <button class="add-btn secondary" id="exportVaultBtn">
+            <span data-icon="export" data-size="14"></span> Export
+          </button>
+          <button class="add-btn" id="addNoteBtn">
+            <span data-icon="plus" data-size="14"></span> New
+          </button>
         </div>
       </div>
       <div class="search-bar">
-        <input type="search" id="vaultSearch" placeholder="🔍  Search notes…" class="search-input"/>
+        <span data-icon="search" data-size="15" style="color:var(--text3);flex-shrink:0"></span>
+        <input type="search" id="vaultSearch" placeholder="Search notes…" class="search-input"/>
       </div>
       <div class="vault-tabs">
         <button class="vault-tab active" data-vtype="notes">Notes</button>
         <button class="vault-tab" data-vtype="files">Files</button>
         <button class="vault-tab" data-vtype="import">Import</button>
       </div>
-      <div id="notesView" class="vault-view">
-        <div class="vault-list" id="notesList"></div>
-      </div>
+      <div id="notesView" class="vault-view"><div class="vault-list" id="notesList"></div></div>
       <div id="filesView" class="vault-view hidden">
         <label class="file-upload-zone">
           <input type="file" id="fileInput" multiple hidden/>
-          <div class="upload-inner"><span>📁</span><p>Tap to encrypt &amp; store a file</p><small>Never uploaded — local only</small></div>
+          <div class="upload-inner">
+            <span data-icon="download" data-size="28"></span>
+            <p>Tap to encrypt &amp; store a file</p>
+            <small>Never uploaded — local only</small>
+          </div>
         </label>
         <div class="vault-list" id="filesList"></div>
       </div>
@@ -222,12 +260,14 @@
           <p>Select an encrypted <code>.shieldspace</code> backup file to restore notes.</p>
           <label class="file-upload-zone">
             <input type="file" id="importInput" accept=".shieldspace,.json" hidden/>
-            <div class="upload-inner"><span>📦</span><p>Select backup file</p></div>
+            <div class="upload-inner">
+              <span data-icon="upload" data-size="28"></span>
+              <p>Select backup file</p>
+            </div>
           </label>
         </div>
       </div>
     </div>
-    <!-- Note modal -->
     <div class="modal hidden" id="noteModal">
       <div class="modal-backdrop"></div>
       <div class="modal-box">
@@ -238,85 +278,160 @@
             <button class="modal-close-btn" id="closeNoteBtn">✕</button>
           </div>
         </div>
-        <textarea class="modal-body" id="noteBody" placeholder="Write anything… it's encrypted with AES-256."></textarea>
+        <textarea class="modal-body" id="noteBody" placeholder="Write anything… encrypted with AES-256."></textarea>
       </div>
     </div>
   </div>
 
-  <!-- ── BROWSER ────────────────────────────────── -->
+  <!-- ── BROWSER ────────────────────────────────────── -->
   <div class="tab-content hidden" id="tab-browser">
     <div class="browser-chrome">
       <div class="browser-bar">
-        <span class="secure-badge">🔒</span>
+        <span data-icon="lock" data-size="14" style="color:var(--accent);flex-shrink:0"></span>
         <input class="url-input" id="urlInput" type="url" placeholder="Enter URL…" autocomplete="off"/>
         <button class="go-btn" id="goBtn">Go</button>
       </div>
       <div class="browser-actions">
-        <button class="browser-action-btn" id="clearBrowserBtn">🗑 Clear Session</button>
+        <button class="browser-action-btn" id="clearBrowserBtn">
+          <span data-icon="trash" data-size="13"></span> Clear Session
+        </button>
         <button class="browser-action-btn" id="reloadBtn">↻ Reload</button>
       </div>
     </div>
     <div class="browser-frame-wrap">
       <iframe id="browserFrame" class="browser-frame" sandbox="allow-scripts allow-same-origin allow-forms" src="about:blank"></iframe>
       <div class="browser-placeholder" id="browserPlaceholder">
-        <div class="browser-ph-icon">🌐</div>
+        <div class="browser-ph-icon" data-icon="browser" data-size="48" style="color:var(--text3)"></div>
         <h3>Secure Mini-Browser</h3>
         <p>No history saved. Cookies wiped on exit. No trackers.</p>
-        <div class="browser-features"><span>✓ No history</span><span>✓ Cookies cleared on exit</span><span>✓ Session wiped on tab switch</span></div>
+        <div class="browser-features">
+          <span><span data-icon="check" data-size="12"></span> No history</span>
+          <span><span data-icon="check" data-size="12"></span> Cookies cleared on exit</span>
+          <span><span data-icon="check" data-size="12"></span> Session wiped on tab switch</span>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ── INTEL / INTRUDERS ──────────────────────── -->
+  <!-- ── INTEL / INTRUDERS ─────────────────────────── -->
   <div class="tab-content hidden" id="tab-intruders">
     <div class="page-inner">
-      <div class="tab-header"><h2>Intruder Intel</h2><button class="add-btn secondary" id="clearIntrudersBtn">Clear All</button></div>
-      <p class="sub" style="margin-top:-0.5rem">Front-camera selfies taken on failed PIN attempts.</p>
-      <div id="intruderGrid" class="intruder-grid">
-        <div class="empty-state"><div class="empty-icon">🕵️</div><p>No intruders captured yet.<br/>Wrong PIN attempts trigger a photo.</p></div>
+      <div class="tab-header">
+        <h2>Intruder Intel</h2>
+        <button class="add-btn secondary" id="clearIntrudersBtn">
+          <span data-icon="trash" data-size="13"></span> Clear
+        </button>
       </div>
+      <p class="sub" style="margin-top:-0.5rem">Front-camera photos on failed PIN attempts.</p>
+      <div id="intruderGrid" class="intruder-grid"></div>
     </div>
   </div>
 
-  <!-- ── SETTINGS ───────────────────────────────── -->
+  <!-- ── SETTINGS ──────────────────────────────────── -->
   <div class="tab-content hidden" id="tab-settings">
     <div class="page-inner">
       <div class="tab-header"><h2>Settings</h2></div>
+
       <div class="settings-group">
         <div class="settings-label">Security</div>
-        <button class="settings-item" id="changePinBtn"><span class="si-icon">🔑</span><div class="si-text"><strong>Change PIN</strong><small>Update your unlock PIN</small></div><span class="si-arrow">›</span></button>
-        <button class="settings-item" id="setupDecoyBtn"><span class="si-icon">🎭</span><div class="si-text"><strong>Decoy PIN</strong><small>Opens fake calculator</small></div><span class="si-arrow">›</span></button>
-        <div class="settings-item"><span class="si-icon">⏱</span><div class="si-text"><strong>Auto-lock (30s)</strong><small>Lock after inactivity</small></div>
+        <button class="settings-item" id="changePinBtn">
+          <span class="si-icon" data-icon="key" data-size="18"></span>
+          <div class="si-text"><strong>Change PIN</strong><small>Update your unlock PIN</small></div>
+          <span class="si-arrow" data-icon="chevronRight" data-size="16"></span>
+        </button>
+        <button class="settings-item" id="setupDecoyBtn">
+          <span class="si-icon">🎭</span>
+          <div class="si-text"><strong>Decoy PIN</strong><small>Opens fake calculator</small></div>
+          <span class="si-arrow" data-icon="chevronRight" data-size="16"></span>
+        </button>
+        <div class="settings-item">
+          <span class="si-icon" data-icon="timer" data-size="18"></span>
+          <div class="si-text">
+            <strong>Auto-lock</strong>
+            <small>Lock after inactivity</small>
+          </div>
           <label class="toggle-switch"><input type="checkbox" id="autoLockToggle" checked/><span class="toggle-track"></span></label>
         </div>
-        <div class="settings-item"><span class="si-icon">💣</span><div class="si-text"><strong>Self-Destruct</strong><small>Wipe vault after 5 wrong PINs</small></div>
+        <div class="settings-item">
+          <span class="si-icon" data-icon="skull" data-size="18"></span>
+          <div class="si-text"><strong>Self-Destruct</strong><small>Wipe vault after 5 wrong PINs</small></div>
           <label class="toggle-switch"><input type="checkbox" id="selfDestructToggle"/><span class="toggle-track"></span></label>
         </div>
       </div>
+
       <div class="settings-group">
         <div class="settings-label">Privacy</div>
-        <div class="settings-item"><span class="si-icon">👁</span><div class="si-text"><strong>Privacy Blur</strong><small>Dim edges when inactive</small></div>
+        <div class="settings-item">
+          <span class="si-icon" data-icon="blur" data-size="18"></span>
+          <div class="si-text">
+            <strong>Privacy Blur</strong>
+            <small class="timer-row">
+              Dim after
+              <select class="timer-select" id="blurDelaySelect">
+                <option value="30000">30s</option>
+                <option value="60000" selected>60s</option>
+                <option value="120000">2 min</option>
+                <option value="300000">5 min</option>
+              </select>
+              of inactivity
+            </small>
+          </div>
           <label class="toggle-switch"><input type="checkbox" id="blurToggle2"/><span class="toggle-track"></span></label>
         </div>
-        <div class="settings-item"><span class="si-icon">📳</span><div class="si-text"><strong>Shake to Lock</strong><small>Shake phone = instant lock</small></div>
+        <div class="settings-item">
+          <span class="si-icon" data-icon="shake" data-size="18"></span>
+          <div class="si-text"><strong>Shake to Lock</strong><small>Shake phone = instant lock</small></div>
           <label class="toggle-switch"><input type="checkbox" id="shakeToggle2"/><span class="toggle-track"></span></label>
         </div>
-        <div class="settings-item"><span class="si-icon">📷</span><div class="si-text"><strong>Camera Watch</strong><small>Auto-blur on extra face</small></div>
+        <div class="settings-item">
+          <span class="si-icon" data-icon="camera" data-size="18"></span>
+          <div class="si-text"><strong>Camera Watch</strong><small>Auto-blur on extra face</small></div>
           <label class="toggle-switch"><input type="checkbox" id="cameraToggle2"/><span class="toggle-track"></span></label>
         </div>
-        <div class="settings-item"><span class="si-icon">📸</span><div class="si-text"><strong>Intruder Selfie</strong><small>Photo on 3 wrong PINs</small></div>
+        <div class="settings-item">
+          <span class="si-icon" data-icon="bell" data-size="18"></span>
+          <div class="si-text"><strong>Intruder Selfie</strong><small>Photo on 3 wrong PINs</small></div>
           <label class="toggle-switch"><input type="checkbox" id="intruderToggle" checked/><span class="toggle-track"></span></label>
         </div>
+        <button class="settings-item" id="overlayManagerSettingsBtn">
+          <span class="si-icon" data-icon="layers" data-size="18"></span>
+          <div class="si-text">
+            <strong>System Overlay</strong>
+            <small>Privacy blur on other apps</small>
+          </div>
+          <span class="si-badge" id="overlayModeBadge2">off</span>
+          <span class="si-arrow" data-icon="chevronRight" data-size="16"></span>
+        </button>
       </div>
+
       <div class="settings-group">
         <div class="settings-label">Data</div>
-        <button class="settings-item" id="exportSettingsBtn"><span class="si-icon">↑</span><div class="si-text"><strong>Export Encrypted Backup</strong><small>Save vault to a .shieldspace file</small></div><span class="si-arrow">›</span></button>
-        <button class="settings-item danger" id="clearVaultBtn"><span class="si-icon">🗑</span><div class="si-text"><strong>Clear All Vault Data</strong><small>Permanently delete all data</small></div><span class="si-arrow">›</span></button>
-        <button class="settings-item danger" id="resetAppBtn"><span class="si-icon">⚠️</span><div class="si-text"><strong>Factory Reset</strong><small>Wipe everything</small></div><span class="si-arrow">›</span></button>
+        <button class="settings-item" id="exportSettingsBtn">
+          <span class="si-icon" data-icon="export" data-size="18"></span>
+          <div class="si-text"><strong>Export Encrypted Backup</strong><small>Save vault to .shieldspace file</small></div>
+          <span class="si-arrow" data-icon="chevronRight" data-size="16"></span>
+        </button>
+        <button class="settings-item danger" id="clearVaultBtn">
+          <span class="si-icon" data-icon="trash" data-size="18"></span>
+          <div class="si-text"><strong>Clear All Vault Data</strong><small>Permanently delete all data</small></div>
+          <span class="si-arrow" data-icon="chevronRight" data-size="16"></span>
+        </button>
+        <button class="settings-item danger" id="resetAppBtn">
+          <span class="si-icon" data-icon="alert" data-size="18"></span>
+          <div class="si-text"><strong>Factory Reset</strong><small>Wipe everything</small></div>
+          <span class="si-arrow" data-icon="chevronRight" data-size="16"></span>
+        </button>
       </div>
+
       <div class="settings-group">
         <div class="settings-label">About</div>
-        <div class="settings-item info-item"><span class="si-icon">🛡</span><div class="si-text"><strong>ShieldSpace v2.0</strong><small>AES-256-GCM · PBKDF2-SHA256 · No servers · No tracking</small></div></div>
+        <div class="settings-item info-item">
+          <span class="si-icon" data-icon="shieldCheck" data-size="18"></span>
+          <div class="si-text">
+            <strong>ShieldSpace v2.1</strong>
+            <small>AES-256-GCM · PBKDF2-SHA256 · No servers · No tracking</small>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -325,28 +440,24 @@
   <div id="privacyOverlay" class="privacy-overlay hidden"></div>
 </div>
 
+<script src="icons.js"></script>
 <script src="vault.js"></script>
 <script src="overlay.js"></script>
 <script src="camera.js"></script>
 <script src="shake.js"></script>
 <script src="browser.js"></script>
 <script src="clipboard.js"></script>
+<script src="permissions.js"></script>
+<script src="overlay-manager.js"></script>
 <script src="app.js"></script>
 <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('service-worker.js').catch(() => {});
-}
-// Calculator logic for decoy
-let calcExpr = '';
-function calcPress(v) {
-  const d = document.getElementById('calcDisplay');
-  if (v === 'AC') { calcExpr = ''; d.textContent = '0'; return; }
-  if (v === '=') {
-    try { calcExpr = String(eval(calcExpr) || 0); d.textContent = calcExpr; }
-    catch { d.textContent = 'Error'; calcExpr = ''; }
-    return;
-  }
-  calcExpr += v; d.textContent = calcExpr;
+if('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+let calcExpr='';
+function calcPress(v){
+  const d=document.getElementById('calcDisplay');
+  if(v==='AC'){calcExpr='';d.textContent='0';return;}
+  if(v==='='){try{calcExpr=String(eval(calcExpr)||0);d.textContent=calcExpr;}catch{d.textContent='Error';calcExpr='';}return;}
+  calcExpr+=v;d.textContent=calcExpr;
 }
 </script>
 </body>

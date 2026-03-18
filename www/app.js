@@ -350,3 +350,69 @@ function _toast(msg,type) {
 function _esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 function _rel(ts){const d=Date.now()-ts;return d<60000?'just now':d<3600000?Math.floor(d/60000)+'m ago':d<86400000?Math.floor(d/3600000)+'h ago':Math.floor(d/86400000)+'d ago';}
 function _fIcon(t=''){return t.startsWith('image/')?'🖼':t.startsWith('video/')?'🎬':t.startsWith('audio/')?'🎵':t.includes('pdf')?'📄':'📁';}
+
+
+// ── v2.1 ADDITIONS ─────────────────────────────────
+
+// Init icons and overlay manager on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  Icons.applyAll();
+  OverlayManager.init();
+
+  // Overlay card on dashboard
+  const overlayCard = document.getElementById('overlayCard');
+  if (overlayCard) overlayCard.addEventListener('click', () => OverlayManager.openUI());
+
+  // Overlay button in header
+  const omBtn = document.getElementById('overlayManagerBtn');
+  if (omBtn) omBtn.addEventListener('click', () => OverlayManager.openUI());
+
+  // Overlay button in settings
+  const omSettBtn = document.getElementById('overlayManagerSettingsBtn');
+  if (omSettBtn) omSettBtn.addEventListener('click', () => OverlayManager.openUI());
+
+  // Blur delay selector
+  const delaySelect = document.getElementById('blurDelaySelect');
+  if (delaySelect) {
+    const saved = localStorage.getItem('ss_blur_delay') || '60000';
+    delaySelect.value = saved;
+    delaySelect.addEventListener('change', () => {
+      PrivacyOverlay.setDelay(parseInt(delaySelect.value));
+    });
+  }
+
+  // Sync overlay mode badges
+  function syncOverlayBadge() {
+    const mode = OverlayManager.getMode();
+    const labels = { off:'off', all:'all apps', notifications:'notifs', custom:'custom' };
+    const txt = labels[mode] || 'off';
+    ['overlayModeBadge','overlayModeBadge2'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = txt;
+    });
+  }
+  syncOverlayBadge();
+  setInterval(syncOverlayBadge, 2000);
+
+  // First-run permission onboarding
+  if (Permissions.isFirstRun()) {
+    // Wait for app to be unlocked before showing permissions
+    const origShowApp = window._showApp;
+  }
+}, { once: true });
+
+// Trigger permissions after first successful unlock
+const _origShowApp = window._showApp;
+
+// Hook into showApp via a custom event
+document.addEventListener('ss:unlocked', () => {
+  if (Permissions.isFirstRun()) {
+    setTimeout(() => {
+      Permissions.start((results) => {
+        console.log('Permissions results:', results);
+        // Apply whatever was granted
+        if (results.motion) ShakeLock.enable();
+      });
+    }, 800);
+  }
+});
