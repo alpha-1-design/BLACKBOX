@@ -453,3 +453,198 @@ document.addEventListener('click', (e) => {
     e.target.closest('.om-app-tag').remove();
   }
 });
+
+
+// ══════════════════════════════════════════════════
+// v2.3 — Settings wiring, overlay preview, permissions
+//         about/privacy/support navigation
+// ══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+
+  Icons.applyAll();
+  OverlayManager.init();
+
+  // ── Blur delay selector (settings) ──────────────
+  const delaySelect = document.getElementById('blurDelaySelect');
+  if (delaySelect) {
+    const saved = localStorage.getItem('ss_blur_delay') || '60000';
+    delaySelect.value = saved;
+    delaySelect.addEventListener('change', () => {
+      PrivacyOverlay.setDelay(parseInt(delaySelect.value));
+    });
+  }
+
+  // ── Overlay preview + sliders ────────────────────
+  const darknessSlider = document.getElementById('darknessSlider');
+  const edgeSlider     = document.getElementById('edgeSlider');
+  const previewDim     = document.getElementById('previewDim');
+  const previewVig     = document.getElementById('previewVignette');
+  const darknessVal    = document.getElementById('darknessVal');
+  const edgeVal        = document.getElementById('edgeVal');
+  const edgeRow        = document.getElementById('edgeSliderRow');
+  let overlayCoverage  = 'full';
+
+  function _updatePreview() {
+    const d = (darknessSlider?.value || 60) / 100;
+    if (previewDim) previewDim.style.opacity = d;
+    if (darknessVal) darknessVal.textContent = Math.round(d*100) + '%';
+    const e = (edgeSlider?.value || 50) / 100;
+    if (edgeVal) edgeVal.textContent = Math.round(e*100) + '%';
+    if (previewVig) {
+      if (overlayCoverage === 'edges') {
+        previewVig.style.opacity = e;
+        previewVig.style.background = `radial-gradient(ellipse 60% 50% at 50% 50%, transparent 30%, rgba(0,0,0,${e}) 100%)`;
+        if (previewDim) previewDim.style.opacity = 0;
+      } else {
+        previewVig.style.opacity = 0;
+        if (previewDim) previewDim.style.opacity = d;
+      }
+    }
+  }
+
+  darknessSlider?.addEventListener('input', _updatePreview);
+  edgeSlider?.addEventListener('input', _updatePreview);
+  _updatePreview();
+
+  // Coverage pills
+  document.querySelectorAll('.overlay-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.overlay-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      overlayCoverage = pill.dataset.coverage;
+      if (edgeRow) edgeRow.style.display = overlayCoverage === 'edges' ? 'flex' : 'none';
+      _updatePreview();
+    });
+  });
+
+  // Apply overlay button
+  document.getElementById('applyOverlayBtn')?.addEventListener('click', async () => {
+    const alpha = (darknessSlider?.value || 60) / 100;
+    const n = window.Capacitor?.Plugins?.ShieldOverlay;
+    if (n) {
+      try {
+        await n.show({ alpha, mode: overlayCoverage });
+        _toast('🛡 Overlay active', 'green');
+        document.getElementById('overlayDot').className = 'status-dot on';
+        document.getElementById('overlayTxt').textContent = 'active';
+      } catch(e) {
+        _toast('Grant "Display over apps" permission first', 'red');
+      }
+    } else {
+      PrivacyOverlay.enable();
+      _toast('🛡 In-app blur enabled', 'green');
+    }
+  });
+
+  document.getElementById('hideOverlayBtn')?.addEventListener('click', async () => {
+    const n = window.Capacitor?.Plugins?.ShieldOverlay;
+    if (n) await n.hide().catch(()=>{});
+    PrivacyOverlay.disable();
+    document.getElementById('overlayDot').className = 'status-dot off';
+    document.getElementById('overlayTxt').textContent = 'off';
+    _toast('Overlay off');
+  });
+
+  // ── Permissions section in settings ─────────────
+  async function _refreshPermStatus() {
+    const n = window.Capacitor?.Plugins?.ShieldPermissions;
+    if (!n) return;
+    try {
+      const s = await n.checkAll();
+      _setPermDot('dotCamera',   s.camera);
+      _setPermDot('dotNotifs',   s.notifications);
+      _setPermDot('dotStorage',  s.storage);
+      _setPermDot('dotOverlay',  s.overlay);
+      // Biometric check
+      const bio = window.Capacitor?.Plugins?.ShieldBiometric;
+      if (bio) {
+        const b = await bio.isAvailable();
+        _setPermDot('dotBiometric', b.available);
+      }
+    } catch(e) {}
+  }
+
+  function _setPermDot(id, granted) {
+    const el = document.getElementById(id);
+    if (el) el.className = 'perm-status-dot ' + (granted ? 'granted' : 'denied');
+  }
+
+  // Grant buttons in settings
+  document.querySelectorAll('.perm-grant-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const perm = btn.dataset.perm;
+      await Permissions.requestSingle(perm);
+      setTimeout(_refreshPermStatus, 1000);
+    });
+  });
+
+  // Refresh perm status when settings tab opens
+  const origSwitch = window._switchTab;
+
+  // ── About / Privacy / Support navigation ────────
+  document.getElementById('aboutBtn')?.addEventListener('click', () => _switchTab('about'));
+  document.getElementById('privacyBtn')?.addEventListener('click', () => _switchTab('privacy'));
+  document.getElementById('supportBtn')?.addEventListener('click', () => _switchTab('support'));
+  document.getElementById('backFromAbout')?.addEventListener('click', () => _switchTab('settings'));
+  document.getElementById('backFromPrivacy')?.addEventListener('click', () => _switchTab('settings'));
+  document.getElementById('backFromSupport')?.addEventListener('click', () => _switchTab('settings'));
+
+  // ── Overlay card on dashboard ────────────────────
+  document.getElementById('overlayCard')?.addEventListener('click', () => _switchTab('settings'));
+  document.getElementById('overlayManagerBtn')?.addEventListener('click', () => _switchTab('settings'));
+
+  // ── Header blur toggle ───────────────────────────
+  document.getElementById('blurToggleBtn')?.addEventListener('click', () => {
+    const t = document.getElementById('blurToggle');
+    if (t) { t.checked = !t.checked; t.dispatchEvent(new Event('change')); }
+  });
+
+  // ── Biometric unlock on lock screen ─────────────
+  document.getElementById('biometricBtn')?.addEventListener('click', async () => {
+    const n = window.Capacitor?.Plugins?.ShieldBiometric;
+    if (!n) { _lockToast('Biometrics not available'); return; }
+    try {
+      const avail = await n.isAvailable();
+      if (!avail.available) {
+        _lockToast(avail.reason === 'none_enrolled'
+          ? 'No fingerprint enrolled in Settings'
+          : 'Biometrics not available on this device');
+        return;
+      }
+      const result = await n.authenticate({
+        title: 'ShieldSpace',
+        subtitle: 'Verify to unlock your vault',
+        cancel: 'Use PIN instead'
+      });
+      if (result.success) {
+        try { await Vault.unlock(localStorage.getItem('ss_pin') || '1234'); } catch{}
+        _showApp();
+      }
+    } catch(e) {
+      _lockToast('Biometric failed — use PIN');
+    }
+  });
+
+  function _lockToast(msg) {
+    const e = document.getElementById('pinError');
+    if (e) { e.textContent = msg; setTimeout(()=>e.textContent='', 3000); }
+  }
+
+  // Refresh permissions on settings tab
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      if (b.dataset.tab === 'settings') setTimeout(_refreshPermStatus, 300);
+    });
+  });
+
+  _refreshPermStatus();
+
+}, { once: true });
+
+function _toast(msg, type='') {
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}

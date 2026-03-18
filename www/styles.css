@@ -417,3 +417,181 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .om-app-tag { display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:var(--rs); padding:0.6rem 0.8rem; font-size:0.82rem; }
 .om-app-remove { background:none; border:none; color:var(--text3); cursor:pointer; font-size:0.9rem; padding:2px 4px; }
 .om-no-apps { font-family:var(--mono); font-size:0.72rem; color:var(--text3); text-align:center; padding:1rem; }
+
+
+/* ═══════════════════════════════════════════════════
+   v2.3 ADDITIONS
+═══════════════════════════════════════════════════ */
+
+/* ── OVERLAY PREVIEW & SLIDER ──────────────────── */
+.overlay-preview {
+  position: relative;
+  border-radius: var(--r);
+  overflow: hidden;
+  height: 140px;
+  background: linear-gradient(135deg, var(--bg2) 0%, var(--surface) 100%);
+  border: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+.overlay-preview-content {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 6px;
+}
+.overlay-preview-content p {
+  font-size: 0.8rem; color: var(--text2);
+  font-family: var(--mono);
+}
+.overlay-preview-dim {
+  position: absolute; inset: 0;
+  background: black;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.overlay-preview-vignette {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.slider-row { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+.slider-label {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.8rem; font-weight: 600;
+}
+.slider-label span { font-family: var(--mono); font-size: 0.72rem; color: var(--accent); }
+.shield-slider {
+  -webkit-appearance: none;
+  width: 100%; height: 4px;
+  background: var(--surface2);
+  border-radius: 2px; outline: none;
+  cursor: pointer;
+}
+.shield-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(127,255,178,0.4);
+  cursor: pointer;
+}
+
+.overlay-mode-pills {
+  display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 1rem;
+}
+.overlay-pill {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 20px; color: var(--text2);
+  font-family: var(--font); font-size: 0.78rem; font-weight: 600;
+  padding: 0.4rem 0.9rem; cursor: pointer; transition: all 0.2s;
+}
+.overlay-pill.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── ABOUT / PRIVACY / SUPPORT PAGES ───────────── */
+.info-page { display: flex; flex-direction: column; gap: 1.2rem; }
+
+.about-hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 2rem 1.5rem;
+  text-align: center;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 0.75rem;
+}
+.about-logo-a {
+  width: 72px; height: 72px;
+  background: var(--accent-dim);
+  border: 1.5px solid rgba(127,255,178,0.4);
+  border-radius: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.2rem; font-weight: 800;
+  color: var(--accent);
+  text-shadow: 0 0 24px rgba(127,255,178,0.6);
+}
+.about-name { font-size: 1.4rem; font-weight: 800; }
+.about-version {
+  font-family: var(--mono); font-size: 0.7rem;
+  color: var(--text3); letter-spacing: 0.1em;
+}
+.about-tagline { font-size: 0.85rem; color: var(--text2); line-height: 1.6; }
+
+.about-features {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1.2rem;
+  display: flex; flex-direction: column; gap: 0.75rem;
+}
+.about-feature {
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.about-feature-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+.about-feature-text strong { display: block; font-size: 0.88rem; }
+.about-feature-text span { font-size: 0.75rem; color: var(--text2); }
+
+.info-section {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1.2rem;
+  display: flex; flex-direction: column; gap: 0.75rem;
+}
+.info-section h3 {
+  font-size: 0.95rem; font-weight: 700;
+  display: flex; align-items: center; gap: 8px;
+}
+.info-section p {
+  font-size: 0.8rem; color: var(--text2); line-height: 1.7;
+}
+.info-section ul {
+  list-style: none; display: flex;
+  flex-direction: column; gap: 6px;
+}
+.info-section ul li {
+  font-size: 0.8rem; color: var(--text2);
+  display: flex; align-items: flex-start; gap: 8px; line-height: 1.5;
+}
+.info-section ul li::before {
+  content: '✓'; color: var(--accent);
+  font-weight: 700; flex-shrink: 0;
+}
+
+.support-contact {
+  background: var(--accent-dim);
+  border: 1px solid rgba(127,255,178,0.25);
+  border-radius: var(--r); padding: 1.2rem;
+  display: flex; align-items: center; gap: 12px;
+}
+.support-contact-icon { font-size: 1.5rem; }
+.support-contact-text strong { display: block; font-size: 0.9rem; margin-bottom: 3px; }
+.support-contact-text a {
+  font-family: var(--mono); font-size: 0.8rem;
+  color: var(--accent); text-decoration: none;
+}
+
+.built-by {
+  text-align: center;
+  font-family: var(--mono); font-size: 0.68rem;
+  color: var(--text3); padding: 0.5rem;
+}
+.built-by em { color: var(--accent); font-style: normal; }
+
+/* ── SETTINGS PERMISSIONS SECTION ──────────────── */
+.perm-status-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.perm-status-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.perm-status-dot.granted { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.perm-status-dot.denied  { background: var(--red); }
+.perm-status-dot.unknown { background: var(--text3); }
+.perm-grant-btn {
+  background: none; border: 1px solid var(--border2);
+  border-radius: 6px; color: var(--text2);
+  font-family: var(--mono); font-size: 0.65rem;
+  padding: 3px 8px; cursor: pointer;
+  margin-left: auto; flex-shrink: 0;
+}

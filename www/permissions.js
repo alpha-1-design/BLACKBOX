@@ -1,30 +1,37 @@
 /**
- * permissions.js — One-by-one permission onboarding
- * Shows a beautiful explanation screen for each permission
- * before requesting it. Skips already-granted ones.
+ * permissions.js v2.3
+ * Calls native Java plugins for real Android permissions.
+ * Falls back gracefully in PWA/browser mode.
  */
 const Permissions = (() => {
 
   const DONE_KEY = 'ss_perms_done';
 
-  // Define permissions in order with explanations
+  // Get native plugins if available
+  const Native = () => window.Capacitor?.Plugins || {};
+
   const PERMS = [
     {
       id: 'camera',
       icon: 'camera',
       title: 'Camera Access',
-      why: 'ShieldSpace uses your front camera for two features:',
-      points: [
-        '📸 Intruder Selfie — photos wrong-PIN attempts automatically',
-        '👁 Camera Watch — blurs your screen if someone else looks at it',
-      ],
-      note: 'No photos are ever uploaded. Everything stays on your device.',
       color: '#7fffb2',
+      why: 'ShieldSpace uses your camera for:',
+      points: [
+        '📸 Intruder Selfie — photos anyone who enters wrong PIN',
+        '👁 Camera Watch — blurs screen if someone looks over',
+      ],
+      note: 'Photos stay on your device. Never uploaded.',
       request: async () => {
+        const n = Native();
+        if (n.ShieldPermissions) {
+          const r = await n.ShieldPermissions.requestCamera();
+          return r.granted;
+        }
+        // PWA fallback
         try {
-          const s = await navigator.mediaDevices.getUserMedia({video: true});
-          s.getTracks().forEach(t => t.stop());
-          return true;
+          const s = await navigator.mediaDevices.getUserMedia({video:true});
+          s.getTracks().forEach(t=>t.stop()); return true;
         } catch { return false; }
       }
     },
@@ -32,84 +39,87 @@ const Permissions = (() => {
       id: 'notifications',
       icon: 'bell',
       title: 'Notifications',
-      why: 'Optional — ShieldSpace can alert you when:',
+      color: '#ffc94a',
+      why: 'Get alerted when:',
       points: [
         '🔔 An intruder photo is captured',
-        '⚡ Panic mode is triggered',
+        '⚡ Panic mode is triggered remotely',
         '⏱ Your vault auto-locks',
       ],
-      note: 'You can turn individual alerts on or off in Settings.',
-      color: '#ffc94a',
+      note: 'You can control which alerts fire in Settings.',
       request: async () => {
-        if (!('Notification' in window)) return false;
-        const r = await Notification.requestPermission();
-        return r === 'granted';
+        const n = Native();
+        if (n.ShieldPermissions) {
+          const r = await n.ShieldPermissions.requestNotifications();
+          return r.granted;
+        }
+        if ('Notification' in window) {
+          const r = await Notification.requestPermission();
+          return r === 'granted';
+        }
+        return false;
       }
     },
     {
-      id: 'motion',
-      icon: 'shake',
-      title: 'Motion Sensors',
-      why: 'Needed for Shake-to-Lock:',
+      id: 'storage',
+      icon: 'file',
+      title: 'Storage Access',
+      color: '#60a5fa',
+      why: 'Needed to:',
       points: [
-        '📳 Shake your phone = instant lock, no buttons needed',
-        '🔒 Useful when someone grabs your phone unexpectedly',
+        '📁 Store encrypted files in your vault',
+        '💾 Export and import vault backups',
       ],
-      note: 'Motion data is never stored or transmitted anywhere.',
-      color: '#a78bfa',
+      note: 'Files are encrypted before saving. Only you can read them.',
       request: async () => {
-        if (typeof DeviceMotionEvent === 'undefined') return false;
-        if (typeof DeviceMotionEvent.requestPermission === 'function') {
-          try {
-            const r = await DeviceMotionEvent.requestPermission();
-            return r === 'granted';
-          } catch { return false; }
+        const n = Native();
+        if (n.ShieldPermissions) {
+          const r = await n.ShieldPermissions.requestStorage();
+          return r.granted;
         }
-        return true; // Android grants automatically
+        return true;
       }
     },
     {
       id: 'overlay',
-      icon: 'overlay',
-      title: 'Draw Over Other Apps',
+      icon: 'layers',
+      title: 'Display Over Other Apps',
+      color: '#38bdf8',
       why: 'The most powerful privacy feature:',
       points: [
-        '🛡 Privacy blur works on ALL apps, not just ShieldSpace',
-        '🔔 Dims your screen during notifications to block snooping',
-        '📱 You choose: all apps, notifications only, or specific apps',
+        '🛡 Dims your screen on ANY app to block snooping',
+        '📱 Toggle it instantly from your notification shade',
+        '🔔 Auto-dims when notifications arrive (optional)',
       ],
-      note: 'Android will open its settings page for you to enable this.',
-      color: '#38bdf8',
+      note: 'Android will open Settings — find ShieldSpace and tap Allow.',
       request: async () => {
-        // Capacitor/Android native handles this — we flag it for the native layer
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ShieldOverlay) {
-          try {
-            await window.Capacitor.Plugins.ShieldOverlay.requestOverlayPermission();
-            return true;
-          } catch { return false; }
+        const n = Native();
+        if (n.ShieldPermissions) {
+          const r = await n.ShieldPermissions.requestOverlay();
+          return r.granted;
         }
-        // PWA fallback — note that true overlay needs native
-        return 'partial';
+        return false;
       }
     },
     {
       id: 'biometric',
       icon: 'fingerprint',
-      title: 'Fingerprint / Face ID',
+      title: 'Fingerprint Unlock',
+      color: '#f472b6',
       why: 'Unlock ShieldSpace without typing your PIN:',
       points: [
         '👆 Tap fingerprint sensor = instant unlock',
-        '😊 Face unlock supported on compatible devices',
-        '🔒 Biometrics never leave your device — Android handles everything',
+        '🔒 Your fingerprint never leaves your device',
+        '🔑 PIN still works as backup',
       ],
-      note: 'Your PIN still works as a fallback if biometrics fail.',
-      color: '#f472b6',
+      note: 'Uses Android\'s secure biometric system directly.',
       request: async () => {
-        if (!window.PublicKeyCredential) return false;
-        try {
-          const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-          return available;
-        } catch { return false; }
+        const n = Native();
+        if (n.ShieldBiometric) {
+          const r = await n.ShieldBiometric.isAvailable();
+          return r.available;
+        }
+        return false;
       }
     },
   ];
@@ -118,31 +128,19 @@ const Permissions = (() => {
   let results = {};
   let onDoneCallback = null;
 
-  // ── Public ───────────────────────────────────────
-  function isFirstRun() {
-    return !localStorage.getItem(DONE_KEY);
-  }
+  function isFirstRun() { return !localStorage.getItem(DONE_KEY); }
+  function markDone()   { localStorage.setItem(DONE_KEY, '1'); }
 
   function start(onDone) {
     onDoneCallback = onDone;
-    currentIdx = 0;
-    results = {};
+    currentIdx = 0; results = {};
     _showScreen();
   }
 
-  function markDone() {
-    localStorage.setItem(DONE_KEY, '1');
-  }
-
-  // ── UI ───────────────────────────────────────────
   function _showScreen() {
-    if (currentIdx >= PERMS.length) {
-      _finish();
-      return;
-    }
+    if (currentIdx >= PERMS.length) { _finish(); return; }
     const p = PERMS[currentIdx];
-    const existing = document.getElementById('permScreen');
-    if (existing) existing.remove();
+    document.getElementById('permScreen')?.remove();
 
     const el = document.createElement('div');
     el.id = 'permScreen';
@@ -150,56 +148,54 @@ const Permissions = (() => {
     el.innerHTML = `
       <div class="perm-inner">
         <div class="perm-progress">
-          ${PERMS.map((_,i) => `<div class="perm-pip ${i <= currentIdx ? 'active' : ''}"></div>`).join('')}
+          ${PERMS.map((_,i)=>`<div class="perm-pip ${i<=currentIdx?'active':''}"></div>`).join('')}
         </div>
         <div class="perm-icon-wrap" style="--pcolor:${p.color}">
           <div class="perm-icon" data-icon="${p.icon}" data-size="36"></div>
         </div>
         <h2 class="perm-title">${p.title}</h2>
         <p class="perm-why">${p.why}</p>
-        <ul class="perm-points">
-          ${p.points.map(pt => `<li>${pt}</li>`).join('')}
-        </ul>
+        <ul class="perm-points">${p.points.map(pt=>`<li>${pt}</li>`).join('')}</ul>
         <p class="perm-note">${p.note}</p>
         <div class="perm-actions">
           <button class="perm-allow-btn" id="permAllow" style="--pcolor:${p.color}">Allow</button>
-          <button class="perm-skip-btn" id="permSkip">Skip for now</button>
+          <button class="perm-skip-btn"  id="permSkip">Skip for now</button>
         </div>
-      </div>
-    `;
+      </div>`;
     document.body.appendChild(el);
-    Icons.applyAll();
+    if (typeof Icons !== 'undefined') Icons.applyAll();
+    requestAnimationFrame(() => el.classList.add('perm-visible'));
 
     document.getElementById('permAllow').addEventListener('click', async () => {
       const btn = document.getElementById('permAllow');
-      btn.textContent = 'Requesting…';
-      btn.disabled = true;
-      const r = await p.request();
-      results[p.id] = r;
+      btn.textContent = 'Requesting…'; btn.disabled = true;
+      results[p.id] = await p.request();
       _next();
     });
     document.getElementById('permSkip').addEventListener('click', () => {
-      results[p.id] = false;
-      _next();
+      results[p.id] = false; _next();
     });
-
-    // Animate in
-    requestAnimationFrame(() => el.classList.add('perm-visible'));
   }
 
   function _next() {
     const el = document.getElementById('permScreen');
-    if (el) { el.classList.remove('perm-visible'); setTimeout(() => el.remove(), 300); }
+    if (el) { el.classList.remove('perm-visible'); setTimeout(()=>el.remove(), 300); }
     currentIdx++;
     setTimeout(_showScreen, 350);
   }
 
   function _finish() {
     markDone();
-    const el = document.getElementById('permScreen');
-    if (el) el.remove();
+    document.getElementById('permScreen')?.remove();
     if (onDoneCallback) onDoneCallback(results);
   }
 
-  return { isFirstRun, start, markDone };
+  // Re-request a specific permission (from settings)
+  async function requestSingle(id) {
+    const p = PERMS.find(x => x.id === id);
+    if (!p) return false;
+    return p.request();
+  }
+
+  return { isFirstRun, start, markDone, requestSingle };
 })();
