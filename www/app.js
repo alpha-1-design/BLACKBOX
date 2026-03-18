@@ -416,3 +416,16 @@ document.addEventListener('ss:unlocked', () => {
     }, 800);
   }
 });
+
+// Fix: dispatch unlock event so permissions onboarding triggers
+const _origShowAppFix = window._showApp;
+function _showApp() {
+  document.getElementById('lockScreen').classList.remove('active');
+  document.getElementById('mainApp').classList.remove('hidden');
+  document.getElementById('panicOverlay').classList.add('hidden');
+  _resetAutoLock();
+  _refreshVault();
+  _refreshIntruderLog();
+  // Fire permissions onboarding on first unlock
+  document.dispatchEvent(new CustomEvent('ss:unlocked'));
+}
