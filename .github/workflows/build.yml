@@ -24,14 +24,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install Capacitor CLI
-        run: npm install -g @capacitor/cli
-
-      - name: Init & sync Capacitor
-        run: |
-          npx cap init ShieldSpace com.shieldspace.app --web-dir www
-          npx cap add android
-          npx cap sync android
+      - name: Sync Capacitor
+        run: npx cap sync android
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
