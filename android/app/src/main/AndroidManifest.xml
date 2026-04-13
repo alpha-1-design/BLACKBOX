@@ -1,111 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.shieldspace.app">
-
-  <!-- Network -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.shieldspace.app">
   <uses-permission android:name="android.permission.INTERNET"/>
-  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-
-  <!-- Camera -->
   <uses-permission android:name="android.permission.CAMERA"/>
-  <uses-feature android:name="android.hardware.camera"       android:required="false"/>
-  <uses-feature android:name="android.hardware.camera.front" android:required="false"/>
-
-  <!-- Storage -->
-  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"  android:maxSdkVersion="32"/>
-  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>
+  <uses-permission android:name="android.permission.VIBRATE"/>
+  <uses-permission android:name="android.permission.WAKE_LOCK"/>
+  <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+  <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
   <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
   <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
   <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
-
-  <!-- System overlay (draw over other apps) — THE KEY PERMISSION -->
-  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
-
-  <!-- Foreground service (keeps overlay alive) -->
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
-
-  <!-- Biometric -->
-  <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
-  <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
-  <uses-feature android:name="android.hardware.fingerprint" android:required="false"/>
-
-  <!-- Notifications -->
-  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-  <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"/>
-
-  <!-- Motion (shake-to-lock) -->
-  <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false"/>
-
-  <!-- Vibration + wake lock -->
-  <uses-permission android:name="android.permission.VIBRATE"/>
-  <uses-permission android:name="android.permission.WAKE_LOCK"/>
-
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>
+  <uses-feature android:name="android.hardware.camera" android:required="false"/>
+  <uses-feature android:name="android.hardware.camera.front" android:required="false"/>
   <application
     android:allowBackup="false"
     android:icon="@mipmap/ic_launcher"
-    android:label="@string/app_name"
+    android:label="ShieldSpace"
     android:theme="@style/AppTheme"
     android:hardwareAccelerated="true"
     android:usesCleartextTraffic="false">
-
-    <!-- Main activity -->
     <activity
-      android:name=".MainActivity"
-      android:label="@string/app_name"
+      android:name="com.shieldspace.app.MainActivity"
+      android:label="ShieldSpace"
       android:launchMode="singleTask"
-      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|uiMode"
+      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale"
       android:windowSoftInputMode="adjustResize"
-      android:exported="true"
-      android:screenOrientation="portrait">
+      android:exported="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity>
-
-    <!-- Privacy overlay foreground service -->
-    <service
-      android:name=".ShieldOverlayService"
-      android:foregroundServiceType="specialUse"
-      android:exported="false"/>
-
-    <!-- Quick Settings tile — appears in Android notification shade -->
-    <service
-      android:name=".ShieldOverlayTile"
-      android:icon="@drawable/ic_shield_overlay"
-      android:label="@string/overlay_tile_label"
-      android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
-      android:exported="true">
-      <intent-filter>
-        <action android:name="android.service.quicksettings.action.QS_TILE"/>
-      </intent-filter>
-      <meta-data
-        android:name="android.service.quicksettings.TOGGLEABLE_TILE"
-        android:value="true"/>
-    </service>
-
-    <!-- Notification listener service -->
-    <service
-      android:name=".ShieldNotificationService"
-      android:label="ShieldSpace Overlay"
-      android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
-      android:exported="true">
-      <intent-filter>
-        <action android:name="android.service.notification.NotificationListenerService"/>
-      </intent-filter>
-    </service>
-
-    <!-- File provider -->
-    <provider
-      android:name="androidx.core.content.FileProvider"
-      android:authorities="${applicationId}.fileprovider"
-      android:exported="false"
-      android:grantUriPermissions="true">
-      <meta-data
-        android:name="android.support.FILE_PROVIDER_PATHS"
-        android:resource="@xml/file_paths"/>
-    </provider>
-
   </application>
 </manifest>

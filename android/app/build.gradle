@@ -1,61 +1,31 @@
 apply plugin: 'com.android.application'
-
 android {
-    namespace "com.shieldspace.app"
-    compileSdk 34
-
-    defaultConfig {
-        applicationId "com.shieldspace.app"
-        minSdk 24
-        targetSdk 34
-        versionCode 3
-        versionName "2.2.0"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+  namespace "com.shieldspace.app"
+  compileSdk 34
+  defaultConfig {
+    applicationId "com.shieldspace.app"
+    minSdk 22
+    targetSdk 34
+    versionCode 1
+    versionName "2.0.0"
+  }
+  buildTypes {
+    release {
+      minifyEnabled true
+      shrinkResources true
+      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
     }
-
-    buildTypes {
-        release {
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-        debug {
-            applicationIdSuffix ".debug"
-            debuggable true
-        }
-    }
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-
-    packagingOptions {
-        resources {
-            excludes += ['META-INF/LICENSE', 'META-INF/LICENSE.txt']
-        }
-    }
+  }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
 }
-
-repositories {
-    google()
-    mavenCentral()
-}
-
 dependencies {
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation "androidx.appcompat:appcompat:1.6.1"
-    implementation "androidx.core:core:1.12.0"
-    implementation "androidx.core:core-ktx:1.12.0"
-
-    // Biometric
-    implementation "androidx.biometric:biometric:1.2.0-alpha05"
-
-    // Security crypto
-    implementation "androidx.security:security-crypto:1.1.0-alpha06"
-
-    // Capacitor
-    implementation project(':capacitor-android')
+  implementation fileTree(include: ['*.jar'], dir: 'libs')
+  implementation "androidx.appcompat:appcompat:1.6.1"
+  implementation project(':capacitor-android')
+  implementation "androidx.biometric:biometric:1.2.0-alpha05"
+  implementation "androidx.security:security-crypto:1.1.0-alpha06"
 }
-
 apply from: 'capacitor.build.gradle'
