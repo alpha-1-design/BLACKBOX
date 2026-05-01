@@ -24,27 +24,17 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Backup Java plugins
-        run: |
-          mkdir -p /tmp/java_backup
-          cp android/app/src/main/java/com/blackbox/app/*.java /tmp/java_backup/ 2>/dev/null || true
-          cp android/app/src/main/res/values/strings.xml /tmp/java_backup/ 2>/dev/null || true
-          cp android/app/build.gradle /tmp/java_backup/build.gradle 2>/dev/null || true
-          echo "Backed up files:"
-          ls /tmp/java_backup/
-
       - name: Regenerate Android platform
         run: |
           rm -rf android
           npx cap add android
 
-      - name: Restore Java plugins
+      - name: Copy custom Java plugins
         run: |
-          cp /tmp/java_backup/*.java android/app/src/main/java/com/blackbox/app/
-          cp /tmp/java_backup/strings.xml android/app/src/main/res/values/ 2>/dev/null || true
-          cp /tmp/java_backup/build.gradle android/app/build.gradle
-          echo "Restored files:"
-          ls android/app/src/main/java/com/blackbox/app/
+          mkdir -p android/app/src/main/java/com/blackbox/app/
+          cp custom-plugins/*.java android/app/src/main/java/com/blackbox/app/ 2>/dev/null || true
+          cp custom-plugins/strings.xml android/app/src/main/res/values/ 2>/dev/null || true
+          cp custom-plugins/build.gradle android/app/build.gradle 2>/dev/null || true
 
       - name: Sync web files
         run: npx cap sync android
