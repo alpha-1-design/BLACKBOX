@@ -1,4 +1,4 @@
-package com.shieldspace.app;
+package com.blackbox.app;
 
 import android.Manifest;
 import android.app.Activity;

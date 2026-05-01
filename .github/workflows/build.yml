@@ -27,9 +27,8 @@ jobs:
       - name: Backup Java plugins
         run: |
           mkdir -p /tmp/java_backup
-          cp android/app/src/main/java/com/shieldspace/app/*.java /tmp/java_backup/ 2>/dev/null || true
+          cp android/app/src/main/java/com/blackbox/app/*.java /tmp/java_backup/ 2>/dev/null || true
           cp android/app/src/main/res/values/strings.xml /tmp/java_backup/ 2>/dev/null || true
-          cp android/app/src/main/res/drawable/ic_shield_overlay.xml /tmp/java_backup/ 2>/dev/null || true
           cp android/app/build.gradle /tmp/java_backup/build.gradle 2>/dev/null || true
           echo "Backed up files:"
           ls /tmp/java_backup/
@@ -41,13 +40,11 @@ jobs:
 
       - name: Restore Java plugins
         run: |
-          cp /tmp/java_backup/*.java android/app/src/main/java/com/shieldspace/app/
+          cp /tmp/java_backup/*.java android/app/src/main/java/com/blackbox/app/
           cp /tmp/java_backup/strings.xml android/app/src/main/res/values/ 2>/dev/null || true
-          mkdir -p android/app/src/main/res/drawable
-          cp /tmp/java_backup/ic_shield_overlay.xml android/app/src/main/res/drawable/ 2>/dev/null || true
           cp /tmp/java_backup/build.gradle android/app/build.gradle
           echo "Restored files:"
-          ls android/app/src/main/java/com/shieldspace/app/
+          ls android/app/src/main/java/com/blackbox/app/
 
       - name: Sync web files
         run: npx cap sync android
@@ -61,5 +58,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ShieldSpace-debug
+          name: BLACKBOX-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk

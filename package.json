@@ -1,7 +1,7 @@
 {
-  "name": "shieldspace",
+  "name": "blackbox",
   "version": "2.0.0",
-  "description": "ShieldSpace — Private encrypted vault, browser & privacy tools",
+  "description": "BLACKBOX — Offline encrypted security hub for developers",
   "scripts": {
     "sync": "npx cap sync android",
     "open": "npx cap open android",

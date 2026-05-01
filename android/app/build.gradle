@@ -1,9 +1,9 @@
 apply plugin: 'com.android.application'
 android {
-  namespace "com.shieldspace.app"
+  namespace "com.blackbox.app"
   compileSdk 34
   defaultConfig {
-    applicationId "com.shieldspace.app"
+    applicationId "com.blackbox.app"
     minSdk 22
     targetSdk 34
     versionCode 1

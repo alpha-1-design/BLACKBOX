@@ -1,6 +1,6 @@
-const CACHE = 'shieldspace-v2';
+const CACHE = 'blackbox-v2';
 const SHELL = ['./', './index.html', './styles.css', './app.js', './vault.js',
-  './overlay.js', './camera.js', './shake.js', './browser.js', './clipboard.js',
+  './overlay.js', './shake.js', './clipboard.js',
   './service-worker.js', './manifest.json', './assets/icon.svg'];
 
 self.addEventListener('install', e => {

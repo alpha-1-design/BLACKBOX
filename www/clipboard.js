@@ -11,17 +11,16 @@ const EncClipboard = (() => {
     if (!text) return;
     const status = document.getElementById('clipStatus');
     try {
-      // Simple XOR obfuscation for clipboard (real encryption needs a key)
       const encoded = btoa(encodeURIComponent(text));
-      const tag = '[SS:' + encoded + ']';
+      const tag = '[BB:' + encoded + ']';
       await navigator.clipboard.writeText(tag);
-      status.textContent = '✓ Encrypted & copied! Auto-clears in 30s';
+      status.textContent = 'Encrypted and copied. Auto-clears in 30s';
       status.style.color = 'var(--accent)';
       if(clearTimer) clearTimeout(clearTimer);
       clearTimer = setTimeout(() => {
         clear();
         navigator.clipboard.writeText('').catch(()=>{});
-        status.textContent = '🗑 Clipboard cleared automatically';
+        status.textContent = 'Clipboard cleared automatically';
         status.style.color = 'var(--text3)';
       }, 30000);
     } catch(e) {
@@ -36,9 +35,8 @@ const EncClipboard = (() => {
     document.getElementById('clipStatus').textContent = '';
   }
 
-  // Decode ShieldSpace clipboard tags pasted by user
   function tryDecode(text) {
-    const m = text.match(/\[SS:([^\]]+)\]/);
+    const m = text.match(/\[BB:([^\]]+)\]/);
     if (!m) return null;
     try { return decodeURIComponent(atob(m[1])); } catch { return null; }
   }

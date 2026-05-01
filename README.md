@@ -29,7 +29,7 @@
 ```bash
 cd BLACKBOX
 npm install
-npx cap init BLACKBOX com.shieldspace.app --web-dir www
+npx cap init BLACKBOX com.blackbox.app --web-dir www
 npx cap add android
 npx cap sync android
 npx cap open android
@@ -48,7 +48,7 @@ Metadata is in `fastlane/metadata/android/`. To submit to F-Droid:
 
 1. Tag a release: `git tag v2.0.0 && git push --tags`
 2. Fork the [f-droid data](https://gitlab.com/fdroid/fdroiddata) repo
-3. Add a new YAML entry in `metadata/com.shieldspace.app.yml`
+3. Add a new YAML entry in `metadata/com.blackbox.app.yml`
 4. Submit a merge request
 
 ## License

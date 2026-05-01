@@ -1,4 +1,4 @@
-package com.shieldspace.app;
+package com.blackbox.app;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -10,7 +10,7 @@ import androidx.annotation.RequiresApi;
 
 /**
  * ShieldOverlayTile
- * Adds ShieldSpace to the Android Quick Settings panel.
+ * Adds BLACKBOX to the Android Quick Settings panel.
  * User can pull down notification shade and tap once to
  * toggle privacy overlay — exactly like Samsung Extra Dim tile.
  */

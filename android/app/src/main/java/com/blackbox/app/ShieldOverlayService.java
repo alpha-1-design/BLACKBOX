@@ -1,4 +1,4 @@
-package com.shieldspace.app;
+package com.blackbox.app;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -34,10 +34,10 @@ import androidx.core.app.NotificationCompat;
  */
 public class ShieldOverlayService extends Service {
 
-    public static final String ACTION_SHOW   = "com.shieldspace.app.OVERLAY_SHOW";
-    public static final String ACTION_HIDE   = "com.shieldspace.app.OVERLAY_HIDE";
-    public static final String ACTION_TOGGLE = "com.shieldspace.app.OVERLAY_TOGGLE";
-    public static final String ACTION_ALPHA  = "com.shieldspace.app.OVERLAY_ALPHA";
+    public static final String ACTION_SHOW   = "com.blackbox.app.OVERLAY_SHOW";
+    public static final String ACTION_HIDE   = "com.blackbox.app.OVERLAY_HIDE";
+    public static final String ACTION_TOGGLE = "com.blackbox.app.OVERLAY_TOGGLE";
+    public static final String ACTION_ALPHA  = "com.blackbox.app.OVERLAY_ALPHA";
     public static final String EXTRA_ALPHA   = "alpha";
 
     private static final String CHANNEL_ID   = "shield_overlay";
@@ -179,7 +179,7 @@ public class ShieldOverlayService extends Service {
     }
 
     private Notification _buildNotification(boolean active) {
-        // Tap notification = open ShieldSpace
+        // Tap notification = open BLACKBOX
         Intent open = new Intent(this, MainActivity.class);
         PendingIntent pi = PendingIntent.getActivity(
             this, 0, open,

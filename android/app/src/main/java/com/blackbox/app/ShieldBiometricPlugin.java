@@ -1,4 +1,4 @@
-package com.shieldspace.app;
+package com.blackbox.app;
 
 import androidx.annotation.NonNull;
 import androidx.biometric.BiometricManager;

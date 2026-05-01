@@ -1,6 +1,6 @@
 {
-  "appId": "com.shieldspace.app",
-  "appName": "ShieldSpace",
+  "appId": "com.blackbox.app",
+  "appName": "BLACKBOX",
   "webDir": "www",
   "plugins": {
     "SplashScreen": { "launchShowDuration": 1000, "backgroundColor": "#07070f", "showSpinner": false },

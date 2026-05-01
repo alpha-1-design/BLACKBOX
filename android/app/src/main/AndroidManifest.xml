@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.shieldspace.app">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.blackbox.app">
 
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.CAMERA"/>
@@ -29,7 +29,7 @@
     android:usesCleartextTraffic="false">
 
     <activity
-      android:name="com.shieldspace.app.MainActivity"
+      android:name="com.blackbox.app.MainActivity"
       android:label="BLACKBOX"
       android:launchMode="singleTask"
       android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale"
@@ -42,7 +42,7 @@
     </activity>
 
     <service
-      android:name="com.shieldspace.app.ShieldOverlayService"
+      android:name="com.blackbox.app.ShieldOverlayService"
       android:enabled="true"
       android:exported="false"
       android:foregroundServiceType="specialUse">
@@ -52,7 +52,7 @@
     </service>
 
     <service
-      android:name="com.shieldspace.app.ShieldOverlayTile"
+      android:name="com.blackbox.app.ShieldOverlayTile"
       android:label="BLACKBOX Privacy"
       android:icon="@android:drawable/ic_lock_lock"
       android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
