@@ -274,6 +274,10 @@ function _initSettings() {
     _refreshAll();
     e.target.value = '';
   });
+  document.getElementById('websiteBtn')?.addEventListener('click', () => window.open('https://alpha1studio.vercel.app', '_blank'));
+  document.getElementById('githubBtn')?.addEventListener('click', () => window.open('https://github.com/alpha-1-design/BLACKBOX', '_blank'));
+  document.getElementById('faqBtn')?.addEventListener('click', _showFaq);
+  document.getElementById('privacyPolicyBtn')?.addEventListener('click', _showPrivacyPolicy);
 }
 
 function _syncToggle(id, val, onChange) {
@@ -309,6 +313,38 @@ function _setupDecoy() {
 }
 
 /* ── HELPERS ── */
+function _showFaq() {
+  const faq = [
+    { q: 'Is BLACKBOX open source?', a: 'Yes. The full source code is available on GitHub under the MIT license.' },
+    { q: 'Where is my data stored?', a: 'All data is stored locally on your device in encrypted form. Nothing is sent to any server.' },
+    { q: 'What if I forget my PIN?', a: 'PIN recovery is impossible by design — there is no backdoor. A factory reset will wipe all data.' },
+    { q: 'Is there cloud sync?', a: 'No. BLACKBOX is 100% offline. Use the encrypted backup/import feature to transfer data.' },
+    { q: 'How strong is the encryption?', a: 'AES-256-GCM with PBKDF2-SHA256 key derivation (150,000 iterations). Industry standard.' },
+    { q: 'Can I use biometrics?', a: 'Yes, if your device supports fingerprint or face unlock, you can enable it in Settings.' }
+  ];
+  const out = faq.map(f => `<div class="faq-item"><strong>${f.q}</strong><p>${f.a}</p></div>`).join('');
+  alert('FAQ\n\n' + faq.map(f => 'Q: ' + f.q + '\nA: ' + f.a).join('\n\n'));
+}
+
+function _showPrivacyPolicy() {
+  const pp = `Privacy Policy
+
+Last updated: 2026-05-01
+
+BLACKBOX does not collect, transmit, or share any user data.
+
+• All data is stored locally on your device
+• No analytics, no tracking, no network calls
+• No third-party SDKs or services
+• Biometric data never leaves your device (handled by Android)
+• Clipboard content is cleared after 30 seconds
+
+Contact: alpha-1-design via GitHub
+
+Full policy: https://github.com/alpha-1-design/BLACKBOX/blob/main/SECURITY.md`;
+  alert(pp);
+}
+
 function _toast(msg, type) {
   const t = document.createElement('div');
   t.className = 'toast' + (type === 'red' ? ' red' : type === 'green' ? ' green' : '');
