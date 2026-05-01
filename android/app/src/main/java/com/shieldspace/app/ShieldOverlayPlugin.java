@@ -76,7 +76,7 @@ public class ShieldOverlayPlugin extends Plugin {
         _openOverlaySettings(ctx);
         JSObject r = new JSObject();
         r.put("granted", false);
-        r.put("message", "Opened Settings — find ShieldSpace and enable 'Display over other apps'");
+        r.put("message", "Opened Settings — find BLACKBOX and enable 'Display over other apps'");
         call.resolve(r);
     }
 

@@ -1,0 +1,21 @@
+BLACKBOX is a clean, lightweight, offline-first security hub built for developers, creators, and anyone who values digital privacy. All data is encrypted with AES-256-GCM and stored on your device — nothing ever leaves without your explicit consent.
+
+Core Modules:
+
+- Secrets Manager: Store API keys, passwords, and tokens in categorized, encrypted vaults. Tap-to-reveal and one-tap copy.
+- Encrypted Journal: Timestamped entries with category tags, all encrypted locally with your master PIN.
+- 2FA / Authenticator: TOTP code generator with live countdown and manual secret entry. No cloud sync, no accounts needed.
+- Privacy Tools: Permission audit, tracker URL cleaner, browser fingerprint viewer, and malicious URL scanner.
+- Settings: Master PIN change, auto-lock timer, biometric unlock, panic mode with decoy calculator, screenshot blocking.
+
+Security Features:
+
+- AES-256-GCM encryption via Web Crypto API
+- PBKDF2-SHA256 key derivation with 150,000 iterations
+- FLAG_SECURE screenshot and screen recording blocking
+- Biometric unlock (fingerprint / face) via Android BiometricPrompt
+- Panic mode: calculator decoy triggered by PIN prefix
+- Auto-lock on inactivity or app switch
+- 100% offline — no network calls, no analytics, no tracking
+
+BLACKBOX is free, open-source, and built with Capacitor for Android. No proprietary dependencies. No cloud. No compromises.

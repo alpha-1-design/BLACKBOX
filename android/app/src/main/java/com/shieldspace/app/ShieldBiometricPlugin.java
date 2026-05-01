@@ -55,7 +55,7 @@ public class ShieldBiometricPlugin extends Plugin {
 
     @PluginMethod
     public void authenticate(PluginCall call) {
-        String title    = call.getString("title",    "ShieldSpace");
+        String title    = call.getString("title",    "BLACKBOX");
         String subtitle = call.getString("subtitle", "Verify your identity to unlock");
         String cancel   = call.getString("cancel",   "Use PIN instead");
 

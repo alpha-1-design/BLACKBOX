@@ -1,0 +1,1 @@
+Offline security hub for developers and creators. Encrypt secrets, journal entries, and manage 2FA codes — all on-device.

@@ -162,7 +162,7 @@ public class ShieldOverlayService extends Service {
                 CHANNEL_ID, "Privacy Overlay",
                 NotificationManager.IMPORTANCE_LOW
             );
-            ch.setDescription("ShieldSpace privacy overlay is active");
+            ch.setDescription("BLACKBOX privacy overlay is active");
             ch.setShowBadge(false);
             ((NotificationManager) getSystemService(NOTIFICATION_SERVICE))
                 .createNotificationChannel(ch);
@@ -196,7 +196,7 @@ public class ShieldOverlayService extends Service {
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_lock)
-            .setContentTitle(active ? "🛡 Privacy Overlay ON" : "ShieldSpace")
+            .setContentTitle(active ? "Privacy Overlay ON" : "BLACKBOX")
             .setContentText(active ? "Screen dimmed for privacy. Tap to manage." : "Overlay ready — tap to activate.")
             .setContentIntent(pi)
             .addAction(android.R.drawable.ic_lock_lock,

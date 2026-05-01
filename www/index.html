@@ -5,24 +5,26 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <meta name="theme-color" content="#07070f"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <title>Battery ⚡ 78%</title>
+  <title>BLACKBOX</title>
   <link rel="manifest" href="manifest.json"/>
   <link rel="stylesheet" href="styles.css"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 </head>
 <body>
 
-<!-- ── LOCK SCREEN ─────────────────────────────── -->
+<!-- LOCK SCREEN -->
 <div id="lockScreen" class="lock-screen active">
   <canvas id="lockCanvas" class="lock-canvas"></canvas>
   <div class="lock-content">
     <div class="app-logo">
-      <div class="logo-a">A</div>
-      <div class="logo-text">SHIELD<em>SPACE</em></div>
+      <svg class="logo-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="10" y="8" width="28" height="32" rx="5"/>
+        <rect x="19" y="20" width="10" height="20" rx="2"/>
+        <circle cx="24" cy="25" r="2"/>
+      </svg>
     </div>
+    <div class="logo-wordmark">BLACKBOX</div>
     <div class="lock-status-row">
-      <span class="lock-badge">🔒 SECURED</span>
+      <span class="lock-badge">AES-256</span>
       <span id="lockAttemptInfo" class="lock-attempt-info"></span>
     </div>
     <div class="pin-display">
@@ -48,21 +50,12 @@
       <button class="num-key del-key" id="delBtn">⌫</button>
     </div>
     <div class="lock-bottom-row">
-      <button class="lock-bio-btn" id="biometricBtn">👆 Fingerprint</button>
+      <button class="lock-bio-btn" id="biometricBtn">Fingerprint</button>
     </div>
   </div>
 </div>
 
-<!-- ── INTRUDER ALERT ─────────────────────────── -->
-<div id="intruderAlert" class="intruder-alert hidden">
-  <div class="intruder-inner">
-    <div class="intruder-icon">📸</div>
-    <p>Intruder photo captured & encrypted.</p>
-    <button id="intruderOk">OK</button>
-  </div>
-</div>
-
-<!-- ── PANIC / DECOY CALCULATOR ───────────────── -->
+<!-- PANIC CALCULATOR -->
 <div id="panicOverlay" class="panic-overlay hidden">
   <div class="panic-content">
     <div class="calc-title">Calculator</div>
@@ -88,99 +81,87 @@
       <button class="calc-btn" onclick="calcPress('.')">.</button>
       <button class="calc-btn accent" onclick="calcPress('=')">=</button>
     </div>
-    <div class="calc-exit-hint">← tap 5× to exit</div>
+    <div class="calc-exit-hint">tap 5× to exit</div>
   </div>
 </div>
 
-<!-- ── MAIN APP ────────────────────────────────── -->
+<!-- MAIN APP -->
 <div id="mainApp" class="main-app hidden">
 
   <!-- Header -->
   <header class="app-header">
     <div class="header-logo">
-      <span class="hdr-a">A</span>
-      <span>ShieldSpace</span>
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+        <rect x="10" y="8" width="28" height="32" rx="5"/>
+        <rect x="19" y="20" width="10" height="20" rx="2"/>
+        <circle cx="24" cy="25" r="2"/>
+      </svg>
+      <span>BLACKBOX</span>
     </div>
     <div class="header-actions">
-      <button class="icon-btn" id="shakeIndicator" title="Shake to lock" style="font-size:1rem">📳</button>
-      <button class="icon-btn" id="blurToggleBtn" title="Privacy blur">
-        <svg viewBox="0 0 24 24" fill="none" width="18"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" stroke="currentColor" stroke-width="1.5"/></svg>
+      <button class="icon-btn" id="panicBtn" title="Panic mode">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
       </button>
-      <button class="icon-btn panic-btn" id="panicBtn">⚡</button>
     </div>
   </header>
 
-  <!-- Status bar -->
-  <div class="status-bar">
-    <div class="status-item"><span class="status-dot off" id="blurDot"></span><span>Blur <em id="blurTxt">off</em></span></div>
-    <div class="status-item"><span class="status-dot off" id="watchDot"></span><span>Watch <em id="watchTxt">off</em></span></div>
-    <div class="status-item"><span class="status-dot off" id="shakeDot"></span><span>Shake <em id="shakeTxt">off</em></span></div>
-    <div class="status-item"><span class="status-dot on"></span><span>Vault <em>local</em></span></div>
-  </div>
-
-  <!-- Nav -->
-  <nav class="bottom-nav">
-    <button class="nav-btn active" data-tab="dashboard">
-      <svg viewBox="0 0 24 24" fill="none" width="20"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
-      <span>Home</span>
-    </button>
-    <button class="nav-btn" data-tab="vault">
-      <svg viewBox="0 0 24 24" fill="none" width="20"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 11V7a4 4 0 118 0v4" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/></svg>
-      <span>Vault</span>
-    </button>
-    <button class="nav-btn" data-tab="browser">
-      <svg viewBox="0 0 24 24" fill="none" width="20"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M12 3c-2.5 3-4 5.5-4 9s1.5 6 4 9M12 3c2.5 3 4 5.5 4 9s-1.5 6-4 9M3 12h18" stroke="currentColor" stroke-width="1.5"/></svg>
-      <span>Browser</span>
-    </button>
-    <button class="nav-btn" data-tab="intruders">
-      <svg viewBox="0 0 24 24" fill="none" width="20"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.5"/></svg>
-      <span>Intel</span>
-    </button>
-    <button class="nav-btn" data-tab="settings">
-      <svg viewBox="0 0 24 24" fill="none" width="20"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.5"/></svg>
-      <span>Settings</span>
-    </button>
-  </nav>
-
-  <!-- ── DASHBOARD ──────────────────────────────── -->
-  <div class="tab-content active" id="tab-dashboard">
+  <!-- Tab: Home -->
+  <div class="tab-content active" id="tab-home">
     <div class="page-inner">
       <div class="greeting">
-        <div class="greeting-a">A</div>
-        <h1>Your space,<br/><em>your rules.</em></h1>
+        <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48" style="opacity:0.6">
+          <rect x="10" y="8" width="28" height="32" rx="5"/>
+          <rect x="19" y="20" width="10" height="20" rx="2"/>
+          <circle cx="24" cy="25" r="2"/>
+        </svg>
+        <h1>Your secrets.<br/><em>Your rules.</em></h1>
         <p class="sub">AES-256 encrypted. Zero servers. Zero tracking.</p>
       </div>
       <div class="quick-actions">
-        <button class="qa-card" data-goto="vault"><div class="qa-icon">🔐</div><div class="qa-label">Vault</div><div class="qa-sub">Encrypted notes & files</div></button>
-        <button class="qa-card" data-goto="browser"><div class="qa-icon">🌐</div><div class="qa-label">Browser</div><div class="qa-sub">Zero-trace browsing</div></button>
-        <button class="qa-card" data-goto="intruders"><div class="qa-icon">📸</div><div class="qa-label">Intel</div><div class="qa-sub" id="intruderCount">Intruder log</div></button>
-        <button class="qa-card panic-card" id="panicQA"><div class="qa-icon">⚡</div><div class="qa-label">Panic</div><div class="qa-sub">Hide everything</div></button>
+        <button class="qa-card" data-goto="secrets">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          <div><div class="qa-label">Secrets</div><div class="qa-sub">API keys, tokens, passwords</div></div>
+        </button>
+        <button class="qa-card" data-goto="journal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <div><div class="qa-label">Journal</div><div class="qa-sub">Encrypted notes &amp; evidence</div></div>
+        </button>
+        <button class="qa-card" data-goto="auth">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          <div><div class="qa-label">Auth</div><div class="qa-sub">2FA codes &amp; passkeys</div></div>
+        </button>
+        <button class="qa-card" data-goto="privacy">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <div><div class="qa-label">Privacy</div><div class="qa-sub">Audit &amp; tracker tools</div></div>
+        </button>
       </div>
       <div class="feature-cards">
         <div class="feat-card">
-          <div class="feat-header"><span class="feat-title">Privacy Blur</span>
-            <label class="toggle-switch"><input type="checkbox" id="blurToggle"/><span class="toggle-track"></span></label>
+          <div class="feat-header">
+            <span class="feat-title">Clipboard</span>
+            <label class="toggle-switch"><input type="checkbox" id="clipAutoClear" checked/><span class="toggle-track"></span></label>
           </div>
-          <p>Vignette dims edges after 4s of inactivity. Kills shoulder-surfing.</p>
+          <p>Encrypted clipboard — auto-clears in 30 seconds.</p>
         </div>
         <div class="feat-card">
-          <div class="feat-header"><span class="feat-title">Shake to Lock</span>
-            <label class="toggle-switch"><input type="checkbox" id="shakeToggle"/><span class="toggle-track"></span></label>
+          <div class="feat-header">
+            <span class="feat-title">Overlay Dim</span>
+            <label class="toggle-switch"><input type="checkbox" id="overlayToggle"/><span class="toggle-track"></span></label>
           </div>
-          <p>Shake your phone = instant lock. No buttons needed.</p>
+          <p>Samsung-style screen dim for public spaces.</p>
         </div>
         <div class="feat-card">
-          <div class="feat-header"><span class="feat-title">Camera Watch</span>
-            <label class="toggle-switch"><input type="checkbox" id="cameraToggle"/><span class="toggle-track"></span></label>
+          <div class="feat-header">
+            <span class="feat-title">Auto-lock</span>
+            <label class="toggle-switch"><input type="checkbox" id="autoLockToggle" checked/><span class="toggle-track"></span></label>
           </div>
-          <p>Auto-blurs if a second face appears near your screen.</p>
+          <p>Lock after 30 seconds of inactivity.</p>
         </div>
       </div>
       <div class="clipboard-section">
-        <div class="section-title">🔏 Encrypted Clipboard</div>
-        <textarea id="clipInput" class="clip-input" placeholder="Paste sensitive text here — encrypts on save, clears in 30s…"></textarea>
+        <textarea id="clipInput" class="clip-input" placeholder="Paste sensitive text — encrypts on save, clears in 30s…"></textarea>
         <div class="clip-actions">
-          <button class="clip-btn" id="clipSaveBtn">Encrypt &amp; Copy</button>
+          <button class="clip-btn" id="clipSaveBtn">Copy Encrypted</button>
           <button class="clip-btn secondary" id="clipClearBtn">Clear</button>
         </div>
         <div id="clipStatus" class="clip-status"></div>
@@ -188,149 +169,360 @@
     </div>
   </div>
 
-  <!-- ── VAULT ──────────────────────────────────── -->
-  <div class="tab-content hidden" id="tab-vault">
+  <!-- Tab: Secrets -->
+  <div class="tab-content hidden" id="tab-secrets">
     <div class="page-inner">
       <div class="tab-header">
-        <h2>Encrypted Vault</h2>
-        <div style="display:flex;gap:8px">
-          <button class="add-btn secondary" id="exportVaultBtn">↑ Export</button>
-          <button class="add-btn" id="addNoteBtn">+ New</button>
-        </div>
+        <h2>Secrets</h2>
+        <button class="add-btn" id="addSecretBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add
+        </button>
       </div>
       <div class="search-bar">
-        <input type="search" id="vaultSearch" placeholder="🔍  Search notes…" class="search-input"/>
+        <input type="search" id="secretsSearch" placeholder="Search secrets…" class="search-input"/>
       </div>
-      <div class="vault-tabs">
-        <button class="vault-tab active" data-vtype="notes">Notes</button>
-        <button class="vault-tab" data-vtype="files">Files</button>
-        <button class="vault-tab" data-vtype="import">Import</button>
+      <div class="category-pills" id="secretPills">
+        <button class="pill active" data-cat="all">All</button>
+        <button class="pill" data-cat="api">API Keys</button>
+        <button class="pill" data-cat="db">Database</button>
+        <button class="pill" data-cat="ssh">SSH</button>
+        <button class="pill" data-cat="password">Passwords</button>
+        <button class="pill" data-cat="other">Other</button>
       </div>
-      <div id="notesView" class="vault-view">
-        <div class="vault-list" id="notesList"></div>
-      </div>
-      <div id="filesView" class="vault-view hidden">
-        <label class="file-upload-zone">
-          <input type="file" id="fileInput" multiple hidden/>
-          <div class="upload-inner"><span>📁</span><p>Tap to encrypt &amp; store a file</p><small>Never uploaded — local only</small></div>
-        </label>
-        <div class="vault-list" id="filesList"></div>
-      </div>
-      <div id="importView" class="vault-view hidden">
-        <div class="import-box">
-          <h3>Import Vault Backup</h3>
-          <p>Select an encrypted <code>.shieldspace</code> backup file to restore notes.</p>
-          <label class="file-upload-zone">
-            <input type="file" id="importInput" accept=".shieldspace,.json" hidden/>
-            <div class="upload-inner"><span>📦</span><p>Select backup file</p></div>
-          </label>
-        </div>
-      </div>
+      <div class="secrets-list" id="secretsList"></div>
     </div>
-    <!-- Note modal -->
-    <div class="modal hidden" id="noteModal">
+    <!-- Add/Edit Secret Modal -->
+    <div class="modal hidden" id="secretModal">
       <div class="modal-backdrop"></div>
       <div class="modal-box">
         <div class="modal-header">
-          <input class="modal-title-input" id="noteTitle" placeholder="Note title…"/>
-          <div class="modal-actions">
-            <button class="modal-save-btn" id="saveNoteBtn">Save</button>
-            <button class="modal-close-btn" id="closeNoteBtn">✕</button>
-          </div>
+          <span class="modal-title" id="secretModalTitle">New Secret</span>
+          <button class="modal-close-btn" id="closeSecretModal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
-        <textarea class="modal-body" id="noteBody" placeholder="Write anything… it's encrypted with AES-256."></textarea>
+        <form id="secretForm" class="modal-form">
+          <label class="form-group">
+            <span class="form-label">Name</span>
+            <input type="text" id="secretName" class="form-input" placeholder="e.g. OpenAI API Key" required/>
+          </label>
+          <label class="form-group">
+            <span class="form-label">Category</span>
+            <select id="secretCategory" class="form-input">
+              <option value="api">API Key</option>
+              <option value="db">Database</option>
+              <option value="ssh">SSH Key</option>
+              <option value="password">Password</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label class="form-group">
+            <span class="form-label">Value</span>
+            <div class="value-input-wrap">
+              <input type="password" id="secretValue" class="form-input" placeholder="sk-…" required autocomplete="off"/>
+              <button type="button" class="toggle-vis" id="toggleSecretVis">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </label>
+          <label class="form-group">
+            <span class="form-label">Notes <span style="color:var(--text3)">(optional)</span></span>
+            <textarea id="secretNotes" class="form-input form-textarea" placeholder="Endpoint, username, etc."></textarea>
+          </label>
+          <div class="modal-actions-row">
+            <button type="button" class="modal-cancel" id="cancelSecretBtn">Cancel</button>
+            <button type="submit" class="modal-save">Save</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 
-  <!-- ── BROWSER ────────────────────────────────── -->
-  <div class="tab-content hidden" id="tab-browser">
-    <div class="browser-chrome">
-      <div class="browser-bar">
-        <span class="secure-badge">🔒</span>
-        <input class="url-input" id="urlInput" type="url" placeholder="Enter URL…" autocomplete="off"/>
-        <button class="go-btn" id="goBtn">Go</button>
-      </div>
-      <div class="browser-actions">
-        <button class="browser-action-btn" id="clearBrowserBtn">🗑 Clear Session</button>
-        <button class="browser-action-btn" id="reloadBtn">↻ Reload</button>
-      </div>
-    </div>
-    <div class="browser-frame-wrap">
-      <iframe id="browserFrame" class="browser-frame" sandbox="allow-scripts allow-same-origin allow-forms" src="about:blank"></iframe>
-      <div class="browser-placeholder" id="browserPlaceholder">
-        <div class="browser-ph-icon">🌐</div>
-        <h3>Secure Mini-Browser</h3>
-        <p>No history saved. Cookies wiped on exit. No trackers.</p>
-        <div class="browser-features"><span>✓ No history</span><span>✓ Cookies cleared on exit</span><span>✓ Session wiped on tab switch</span></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── INTEL / INTRUDERS ──────────────────────── -->
-  <div class="tab-content hidden" id="tab-intruders">
+  <!-- Tab: Journal -->
+  <div class="tab-content hidden" id="tab-journal">
     <div class="page-inner">
-      <div class="tab-header"><h2>Intruder Intel</h2><button class="add-btn secondary" id="clearIntrudersBtn">Clear All</button></div>
-      <p class="sub" style="margin-top:-0.5rem">Front-camera selfies taken on failed PIN attempts.</p>
-      <div id="intruderGrid" class="intruder-grid">
-        <div class="empty-state"><div class="empty-icon">🕵️</div><p>No intruders captured yet.<br/>Wrong PIN attempts trigger a photo.</p></div>
+      <div class="tab-header">
+        <h2>Journal</h2>
+        <button class="add-btn" id="addEntryBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add
+        </button>
+      </div>
+      <div class="search-bar">
+        <input type="search" id="journalSearch" placeholder="Search entries…" class="search-input"/>
+      </div>
+      <div class="category-pills" id="journalPills">
+        <button class="pill active" data-cat="all">All</button>
+        <button class="pill" data-cat="personal">Personal</button>
+        <button class="pill" data-cat="work">Work</button>
+        <button class="pill" data-cat="evidence">Evidence</button>
+        <button class="pill" data-cat="ideas">Ideas</button>
+      </div>
+      <div class="journal-list" id="journalList"></div>
+    </div>
+    <!-- Journal Entry Modal -->
+    <div class="modal hidden" id="journalModal">
+      <div class="modal-backdrop"></div>
+      <div class="modal-box">
+        <div class="modal-header">
+          <span class="modal-title" id="journalModalTitle">New Entry</span>
+          <button class="modal-close-btn" id="closeJournalModal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <form id="journalForm" class="modal-form">
+          <label class="form-group">
+            <span class="form-label">Title</span>
+            <input type="text" id="journalTitle" class="form-input" placeholder="Entry title…"/>
+          </label>
+          <label class="form-group">
+            <span class="form-label">Category</span>
+            <select id="journalCategory" class="form-input">
+              <option value="personal">Personal</option>
+              <option value="work">Work</option>
+              <option value="evidence">Evidence</option>
+              <option value="ideas">Ideas</option>
+            </select>
+          </label>
+          <label class="form-group">
+            <span class="form-label">Content</span>
+            <textarea id="journalBody" class="form-input form-textarea journal-textarea" placeholder="Write anything… it's encrypted."></textarea>
+          </label>
+          <div class="modal-actions-row">
+            <button type="button" class="modal-cancel" id="cancelJournalBtn">Cancel</button>
+            <button type="submit" class="modal-save">Save</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 
-  <!-- ── SETTINGS ───────────────────────────────── -->
+  <!-- Tab: Auth -->
+  <div class="tab-content hidden" id="tab-auth">
+    <div class="page-inner">
+      <div class="tab-header">
+        <h2>Auth</h2>
+        <button class="add-btn" id="addTotpBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add
+        </button>
+      </div>
+      <div class="totp-list" id="totpList"></div>
+      <div class="empty-state" id="totpEmpty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="40" height="40"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        <p>No 2FA codes yet.<br/>Add a TOTP secret to get started.</p>
+      </div>
+    </div>
+    <!-- Add TOTP Modal -->
+    <div class="modal hidden" id="totpModal">
+      <div class="modal-backdrop"></div>
+      <div class="modal-box">
+        <div class="modal-header">
+          <span class="modal-title">Add 2FA Code</span>
+          <button class="modal-close-btn" id="closeTotpModal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <form id="totpForm" class="modal-form">
+          <label class="form-group">
+            <span class="form-label">Account</span>
+            <input type="text" id="totpAccount" class="form-input" placeholder="e.g. GitHub" required/>
+          </label>
+          <label class="form-group">
+            <span class="form-label">Secret Key</span>
+            <input type="text" id="totpSecret" class="form-input" placeholder="JBSWY3DPEHPK3PXP…" required autocomplete="off"/>
+          </label>
+          <label class="form-group">
+            <span class="form-label">Digits</span>
+            <select id="totpDigits" class="form-input">
+              <option value="6">6 digits</option>
+              <option value="8">8 digits</option>
+            </select>
+          </label>
+          <div class="modal-actions-row">
+            <button type="button" class="modal-cancel" id="cancelTotpBtn">Cancel</button>
+            <button type="submit" class="modal-save">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Privacy -->
+  <div class="tab-content hidden" id="tab-privacy">
+    <div class="page-inner">
+      <div class="tab-header">
+        <h2>Privacy</h2>
+      </div>
+      <div class="privacy-grid">
+        <button class="privacy-card" id="permAuditBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          <span>Permission Audit</span>
+        </button>
+        <button class="privacy-card" id="trackerCleanBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          <span>Tracker Cleaner</span>
+        </button>
+        <button class="privacy-card" id="fingerprintBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 7h5M17 17h5"/></svg>
+          <span>Browser Fingerprint</span>
+        </button>
+        <button class="privacy-card" id="urlScanBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>URL Scanner</span>
+        </button>
+      </div>
+      <!-- Tracker Cleaner Tool -->
+      <div class="privacy-tool hidden" id="trackerTool">
+        <div class="tool-header">
+          <button class="tool-back" id="trackerToolBack">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <h3>Tracker Cleaner</h3>
+        </div>
+        <textarea id="trackerInput" class="tool-input" placeholder="Paste a URL with tracking params (utm_, fbclid, etc.)…"></textarea>
+        <button class="tool-btn" id="trackerCleanAction">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+          Clean URL
+        </button>
+        <div class="tool-result hidden" id="trackerResult">
+          <label class="result-label">Clean URL</label>
+          <div class="result-value" id="trackerOutput"></div>
+          <button class="tool-btn secondary" id="trackerCopy">Copy</button>
+        </div>
+      </div>
+      <!-- URL Scanner Tool -->
+      <div class="privacy-tool hidden" id="urlScanTool">
+        <div class="tool-header">
+          <button class="tool-back" id="urlScanToolBack">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <h3>URL Scanner</h3>
+        </div>
+        <input type="url" id="urlScanInput" class="tool-input" placeholder="Paste a URL to analyze…"/>
+        <button class="tool-btn" id="urlScanAction">Scan URL</button>
+        <div class="tool-result hidden" id="urlScanResult">
+          <div id="urlScanOutput"></div>
+        </div>
+      </div>
+      <!-- Fingerprint Viewer -->
+      <div class="privacy-tool hidden" id="fingerprintTool">
+        <div class="tool-header">
+          <button class="tool-back" id="fingerprintToolBack">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <h3>Your Browser Fingerprint</h3>
+        </div>
+        <div id="fingerprintOutput" class="fingerprint-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Settings -->
   <div class="tab-content hidden" id="tab-settings">
     <div class="page-inner">
       <div class="tab-header"><h2>Settings</h2></div>
       <div class="settings-group">
         <div class="settings-label">Security</div>
-        <button class="settings-item" id="changePinBtn"><span class="si-icon">🔑</span><div class="si-text"><strong>Change PIN</strong><small>Update your unlock PIN</small></div><span class="si-arrow">›</span></button>
-        <button class="settings-item" id="setupDecoyBtn"><span class="si-icon">🎭</span><div class="si-text"><strong>Decoy PIN</strong><small>Opens fake calculator</small></div><span class="si-arrow">›</span></button>
-        <div class="settings-item"><span class="si-icon">⏱</span><div class="si-text"><strong>Auto-lock (30s)</strong><small>Lock after inactivity</small></div>
-          <label class="toggle-switch"><input type="checkbox" id="autoLockToggle" checked/><span class="toggle-track"></span></label>
+        <button class="settings-item" id="changePinBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          <div class="si-text"><strong>Change PIN</strong><small>Update your unlock PIN</small></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="si-arrow"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <button class="settings-item" id="setupDecoyBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <div class="si-text"><strong>Decoy PIN</strong><small>Opens fake calculator</small></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="si-arrow"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="settings-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <div class="si-text"><strong>Auto-lock</strong><small>Lock after 30s inactivity</small></div>
+          <label class="toggle-switch"><input type="checkbox" id="autoLockToggle2" checked/><span class="toggle-track"></span></label>
         </div>
-        <div class="settings-item"><span class="si-icon">💣</span><div class="si-text"><strong>Self-Destruct</strong><small>Wipe vault after 5 wrong PINs</small></div>
+        <div class="settings-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+          <div class="si-text"><strong>Self-Destruct</strong><small>Wipe all data after 5 wrong PINs</small></div>
           <label class="toggle-switch"><input type="checkbox" id="selfDestructToggle"/><span class="toggle-track"></span></label>
         </div>
       </div>
       <div class="settings-group">
-        <div class="settings-label">Privacy</div>
-        <div class="settings-item"><span class="si-icon">👁</span><div class="si-text"><strong>Privacy Blur</strong><small>Dim edges when inactive</small></div>
-          <label class="toggle-switch"><input type="checkbox" id="blurToggle2"/><span class="toggle-track"></span></label>
-        </div>
-        <div class="settings-item"><span class="si-icon">📳</span><div class="si-text"><strong>Shake to Lock</strong><small>Shake phone = instant lock</small></div>
-          <label class="toggle-switch"><input type="checkbox" id="shakeToggle2"/><span class="toggle-track"></span></label>
-        </div>
-        <div class="settings-item"><span class="si-icon">📷</span><div class="si-text"><strong>Camera Watch</strong><small>Auto-blur on extra face</small></div>
-          <label class="toggle-switch"><input type="checkbox" id="cameraToggle2"/><span class="toggle-track"></span></label>
-        </div>
-        <div class="settings-item"><span class="si-icon">📸</span><div class="si-text"><strong>Intruder Selfie</strong><small>Photo on 3 wrong PINs</small></div>
-          <label class="toggle-switch"><input type="checkbox" id="intruderToggle" checked/><span class="toggle-track"></span></label>
-        </div>
-      </div>
-      <div class="settings-group">
         <div class="settings-label">Data</div>
-        <button class="settings-item" id="exportSettingsBtn"><span class="si-icon">↑</span><div class="si-text"><strong>Export Encrypted Backup</strong><small>Save vault to a .shieldspace file</small></div><span class="si-arrow">›</span></button>
-        <button class="settings-item danger" id="clearVaultBtn"><span class="si-icon">🗑</span><div class="si-text"><strong>Clear All Vault Data</strong><small>Permanently delete all data</small></div><span class="si-arrow">›</span></button>
-        <button class="settings-item danger" id="resetAppBtn"><span class="si-icon">⚠️</span><div class="si-text"><strong>Factory Reset</strong><small>Wipe everything</small></div><span class="si-arrow">›</span></button>
+        <button class="settings-item" id="exportSettingsBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div class="si-text"><strong>Export Encrypted Backup</strong><small>Save all data to a .blackbox file</small></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="si-arrow"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <button class="settings-item" id="importSettingsBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <div class="si-text"><strong>Import Backup</strong><small>Restore from a .blackbox file</small></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="si-arrow"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <input type="file" id="importInput" accept=".blackbox,.json" hidden/>
+        <button class="settings-item danger" id="clearVaultBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          <div class="si-text"><strong>Clear All Data</strong><small>Permanently delete everything</small></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="si-arrow"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <button class="settings-item danger" id="resetAppBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          <div class="si-text"><strong>Factory Reset</strong><small>Wipe everything including PIN</small></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="si-arrow"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
       </div>
       <div class="settings-group">
         <div class="settings-label">About</div>
-        <div class="settings-item info-item"><span class="si-icon">🛡</span><div class="si-text"><strong>ShieldSpace v2.0</strong><small>AES-256-GCM · PBKDF2-SHA256 · No servers · No tracking</small></div></div>
+        <div class="settings-item info-item">
+          <svg viewBox="0 0 48 48" fill="none" stroke="var(--text2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <rect x="10" y="8" width="28" height="32" rx="5"/>
+            <rect x="19" y="20" width="10" height="20" rx="2"/>
+            <circle cx="24" cy="25" r="2"/>
+          </svg>
+          <div class="si-text"><strong>BLACKBOX v1.0</strong><small>AES-256-GCM · PBKDF2-SHA256 · No servers · No tracking</small></div>
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-tab="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="nav-btn" data-tab="secrets">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      <span>Secrets</span>
+    </button>
+    <button class="nav-btn" data-tab="journal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>Journal</span>
+    </button>
+    <button class="nav-btn" data-tab="auth">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span>Auth</span>
+    </button>
+    <button class="nav-btn" data-tab="privacy">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span>Privacy</span>
+    </button>
+    <button class="nav-btn" data-tab="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span>Settings</span>
+    </button>
+  </nav>
 
   <!-- Privacy overlay -->
   <div id="privacyOverlay" class="privacy-overlay hidden"></div>
 </div>
 
 <script src="vault.js"></script>
-<script src="overlay.js"></script>
-<script src="camera.js"></script>
 <script src="shake.js"></script>
-<script src="browser.js"></script>
 <script src="clipboard.js"></script>
+<script src="secrets.js"></script>
+<script src="journal.js"></script>
+<script src="auth.js"></script>
+<script src="privacy.js"></script>
 <script src="app.js"></script>
 <script>
 if ('serviceWorker' in navigator) {

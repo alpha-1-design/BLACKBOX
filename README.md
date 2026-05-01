@@ -1,71 +1,56 @@
-# 🛡 ShieldSpace v2.0
+# BLACKBOX
 
-> AES-256 encrypted vault · private browser · shake-to-lock · intruder selfie · panic mode · self-destruct
+> Offline security hub for developers and creators. AES-256 encrypted secrets, journal, 2FA, and privacy tools — 100% on-device.
 
 ---
 
-## 🚀 First-time Termux Setup
+## Features
+
+| Module | Description |
+|--------|-------------|
+| **Secrets Manager** | Categorized encrypted vault for API keys, passwords, tokens. Tap-to-reveal, one-tap copy. |
+| **Encrypted Journal** | Timestamped entries with category tags, all encrypted locally. |
+| **2FA Authenticator** | TOTP generator with live countdown. Manual secret entry, no cloud. |
+| **Privacy Tools** | Permission audit, tracker URL cleaner, fingerprint viewer, URL scanner. |
+| **Settings** | Master PIN, auto-lock, biometric unlock, panic mode, screenshot block. |
+
+## Security
+
+- AES-256-GCM encryption via Web Crypto API
+- PBKDF2-SHA256 key derivation (150,000 iterations)
+- FLAG_SECURE screenshot/screen recording blocking
+- Biometric unlock (fingerprint/face) via Android BiometricPrompt
+- Panic mode with calculator decoy
+- Auto-lock on inactivity or app switch
+- Zero network calls, zero analytics, zero tracking
+
+## Build
 
 ```bash
-# Install Node + Git (if not done)
-pkg install nodejs git -y
-
-# Go into project
-cd ShieldSpace
-
-# Install Capacitor
+cd BLACKBOX
 npm install
-
-# Init Capacitor (first time only)
-npx cap init ShieldSpace com.shieldspace.app --web-dir www
-
-# Add Android platform
+npx cap init BLACKBOX com.shieldspace.app --web-dir www
 npx cap add android
-
-# Sync web files
 npx cap sync android
-
-# Open in Android Studio (on PC)
-# npx cap open android
+npx cap open android
 ```
 
----
-
-## 📲 Push to GitHub
+Or build directly with Gradle:
 
 ```bash
-cd ~/ShieldSpace
-git init
-git add .
-git commit -m "🛡 ShieldSpace v2.0 — initial commit"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/ShieldSpace.git
-git push -u origin main
+cd android
+./gradlew assembleRelease
 ```
 
----
+## F-Droid
 
-## ⚡ Features
+Metadata is in `fastlane/metadata/android/`. To submit to F-Droid:
 
-| Feature | How it works |
-|---------|-------------|
-| AES-256-GCM Vault | Web Crypto API, PBKDF2-SHA256 key from PIN |
-| Intruder Selfie | 3 wrong PINs → front camera photo → encrypted |
-| Shake to Lock | DeviceMotion API threshold detection |
-| Self-Destruct | 5 wrong PINs → wipe all data |
-| PIN Lockout | 3 wrong → 2 min cooldown |
-| Privacy Blur | Vignette after 4s inactivity |
-| Panic Mode | Shows fake Calculator |
-| Decoy PIN | Secondary PIN opens fake vault |
-| Secure Browser | Session wiped on tab switch |
-| Encrypted Clipboard | Auto-clears clipboard in 30s |
-| Vault Search | Full-text search (in-memory only) |
-| Backup/Restore | Export .shieldspace file, import back |
-| Stealth Tab | Browser tab shows "Battery ⚡ 78%" |
-| Biometric | WebAuthn fingerprint unlock |
-| Screenshot Block | FLAG_SECURE (Android native) |
-| Offline PWA | Service worker caches all assets |
+1. Tag a release: `git tag v2.0.0 && git push --tags`
+2. Fork the [f-droid data](https://gitlab.com/fdroid/fdroiddata) repo
+3. Add a new YAML entry in `metadata/com.shieldspace.app.yml`
+4. Submit a merge request
 
----
+## License
 
-## 🔐 Default PIN: `1234` — Change immediately in Settings!
+MIT
