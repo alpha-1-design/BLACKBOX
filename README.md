@@ -207,4 +207,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 BLACKBOX is free software. You are free to use, modify, and distribute it under the terms of the MIT License.
 
-Built by Alpha-1 Studio.
+Built by Alpha-1-design.
