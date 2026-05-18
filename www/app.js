@@ -40,6 +40,15 @@ function _initLock() {
   document.getElementById('panicBtn')?.addEventListener('click', _triggerPanic);
   document.getElementById('biometricBtn')?.addEventListener('click', _biometricUnlock);
 
+  // Register biometric auth if supported
+  if (typeof window.ShieldBiometric !== 'undefined') {
+    window.ShieldBiometric.isAvailable().then(res => {
+      if (res.available) {
+        document.getElementById('biometricBtn').style.display = 'block';
+      }
+    });
+  }
+
   let tapCount = 0;
   document.getElementById('panicOverlay')?.addEventListener('click', (e) => {
     if (!e.target.classList.contains('calc-btn')) {
@@ -53,16 +62,33 @@ function _initLock() {
     if (newPin && /^\d{4}$/.test(newPin)) {
       PIN = newPin;
       localStorage.setItem(PIN_KEY, PIN);
+
+      // Prompt for biometric registration immediately
+      if (typeof window.ShieldBiometric !== 'undefined') {
+         window.ShieldBiometric.isAvailable().then(res => {
+           if (res.available && confirm('Register fingerprint/face for faster access?')) {
+             _biometricUnlock();
+           }
+         });
+      }
     } else {
       PIN = '0000';
       localStorage.setItem(PIN_KEY, PIN);
     }
   }
-}
+  }
 
-function _addDigit(d) {
-  if (_isLockedOut()) return;
-  if (digits.length >= 4) return;
+  async function _biometricUnlock() {
+  if (typeof window.ShieldBiometric === 'undefined') return;
+  try {
+    const res = await window.ShieldBiometric.authenticate({ title: 'Unlock BLACKBOX' });
+    if (res.success) {
+      failCount = 0;
+      await Vault.unlock(PIN); // unlock using master PIN stored in memory
+      _showApp();
+    }
+  } catch (e) { console.error('Biometric error:', e); }
+  }
   digits.push(d);
   _renderDots();
   if (digits.length === 4) _checkPin();
