@@ -6,6 +6,7 @@ let PIN = localStorage.getItem(PIN_KEY) || null;
 let DECOY_PIN = localStorage.getItem(DECOY_KEY) || '';
 let digits = [];
 let activeTab = 'home';
+let _setupActive = false;
 let failCount = 0;
 let lockoutEnd = 0;
 let lockoutInterval = null;
@@ -42,11 +43,13 @@ function _initLock() {
 
   // Register biometric auth if supported
   if (window.Capacitor?.Plugins?.ShieldBiometric) {
-    window.Capacitor.Plugins.ShieldBiometric.isAvailable().then(res => {
-      if (res.available) {
-        document.getElementById('biometricBtn').style.display = 'block';
-      }
-    });
+    window.Capacitor.Plugins.ShieldBiometric.isAvailable()
+      .then(res => {
+        if (res.available) {
+          document.getElementById('biometricBtn').style.display = 'block';
+        }
+      })
+      .catch(() => {});
   }
 
   let tapCount = 0;
@@ -65,6 +68,7 @@ function _initLock() {
 function _showSetupPinModal() {
   const modal = document.getElementById('setupPinModal');
   if (!modal) return;
+  _setupActive = true;
   modal.classList.remove('hidden');
 
   const setupDots = [0, 1, 2, 3].map(i => document.getElementById('sd' + i));
@@ -78,6 +82,7 @@ function _showSetupPinModal() {
     if (setupDigits.length === 4) {
       PIN = setupDigits.join('');
       localStorage.setItem(PIN_KEY, PIN);
+      _setupActive = false;
       modal.classList.add('hidden');
 
       // Prompt for biometric registration
@@ -86,7 +91,7 @@ function _showSetupPinModal() {
           if (res.available && confirm('Register fingerprint/face for faster access?')) {
             _biometricUnlock();
           }
-        });
+        }).catch(() => {});
       }
     }
   };
@@ -122,7 +127,7 @@ async function _biometricUnlock() {
 function _addDigit(d) {
   if (_isLockedOut()) return;
   if (digits.length >= 4) return;
-  if (!document.getElementById('setupPinModal')?.classList.contains('hidden')) return;
+  if (_setupActive) return;
   digits.push(d);
   _renderDots();
   if (digits.length === 4) _checkPin();
