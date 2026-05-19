@@ -122,6 +122,7 @@ async function _biometricUnlock() {
 function _addDigit(d) {
   if (_isLockedOut()) return;
   if (digits.length >= 4) return;
+  if (!document.getElementById('setupPinModal')?.classList.contains('hidden')) return;
   digits.push(d);
   _renderDots();
   if (digits.length === 4) _checkPin();
