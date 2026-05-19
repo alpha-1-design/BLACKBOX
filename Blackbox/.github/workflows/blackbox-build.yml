@@ -1,10 +1,8 @@
-name: Blackbox Build and OTA
+name: Build APK
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    tags: [ 'v*' ]
 
 jobs:
   build:
@@ -19,11 +17,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install
-        working-directory: .
 
       - name: Sync Capacitor
-        run: npm run sync
-        working-directory: .
+        run: npx cap sync android
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -31,45 +27,12 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build Android APK
+      - name: Build release APK
         working-directory: ./android
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: blackbox-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-
-  ota:
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Generate OTA Manifest
-        run: |
-          node -e "
-            const fs = require('fs');
-            const path = require('path');
-            const crypto = require('crypto');
-            const manifest = {};
-            const webDir = 'www';
-            const files = fs.readdirSync(webDir, { recursive: true });
-            files.forEach(f => {
-              const fullPath = path.join(webDir, f);
-              if (fs.lstatSync(fullPath).isFile() && (f.endsWith('.js') || f.endsWith('.css'))) {
-                const content = fs.readFileSync(fullPath);
-                manifest[f] = { hash: crypto.createHash('sha256').update(content).digest('hex') };
-              }
-            });
-            fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));
-          "
-
-      - name: Deploy OTA Patches
-        run: |
-          echo 'Deploying patches to https://blackbox-patches.alpha1.design'
-          # Simulated deploy
-        env:
-          DEPLOY_TOKEN: ${{ secrets.OTA_DEPLOY_TOKEN }}
+          name: BLACKBOX-release
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk

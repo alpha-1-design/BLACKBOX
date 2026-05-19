@@ -58,37 +58,70 @@ function _initLock() {
   });
 
   if (!PIN) {
-    const newPin = prompt('Set a 4-digit PIN for BLACKBOX:');
-    if (newPin && /^\d{4}$/.test(newPin)) {
-      PIN = newPin;
-      localStorage.setItem(PIN_KEY, PIN);
+    _showSetupPinModal();
+  }
+}
 
-      // Prompt for biometric registration immediately
+function _showSetupPinModal() {
+  const modal = document.getElementById('setupPinModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+
+  const setupDots = [0, 1, 2, 3].map(i => document.getElementById('sd' + i));
+  let setupDigits = [];
+
+  const updateSetupDots = () => {
+    setupDots.forEach((dot, i) => dot.classList.toggle('filled', i < setupDigits.length));
+  };
+
+  const saveSetupPin = () => {
+    if (setupDigits.length === 4) {
+      PIN = setupDigits.join('');
+      localStorage.setItem(PIN_KEY, PIN);
+      modal.classList.add('hidden');
+
+      // Prompt for biometric registration
       if (typeof window.ShieldBiometric !== 'undefined') {
-         window.ShieldBiometric.isAvailable().then(res => {
-           if (res.available && confirm('Register fingerprint/face for faster access?')) {
-             _biometricUnlock();
-           }
-         });
+        window.ShieldBiometric.isAvailable().then(res => {
+          if (res.available && confirm('Register fingerprint/face for faster access?')) {
+            _biometricUnlock();
+          }
+        });
       }
-    } else {
-      PIN = '0000';
-      localStorage.setItem(PIN_KEY, PIN);
     }
-  }
-  }
+  };
 
-  async function _biometricUnlock() {
+  modal.querySelectorAll('.num-key[data-digit]').forEach(b => b.addEventListener('click', () => {
+    if (setupDigits.length < 4) {
+      setupDigits.push(b.dataset.digit);
+      updateSetupDots();
+      if (setupDigits.length === 4) saveSetupPin();
+    }
+  }));
+
+  document.getElementById('setupDelBtn')?.addEventListener('click', () => {
+    if (setupDigits.length > 0) {
+      setupDigits.pop();
+      updateSetupDots();
+    }
+  });
+}
+
+async function _biometricUnlock() {
   if (typeof window.ShieldBiometric === 'undefined') return;
   try {
     const res = await window.ShieldBiometric.authenticate({ title: 'Unlock BLACKBOX' });
     if (res.success) {
       failCount = 0;
-      await Vault.unlock(PIN); // unlock using master PIN stored in memory
+      await Vault.unlock(PIN);
       _showApp();
     }
   } catch (e) { console.error('Biometric error:', e); }
-  }
+}
+
+function _addDigit(d) {
+  if (_isLockedOut()) return;
+  if (digits.length >= 4) return;
   digits.push(d);
   _renderDots();
   if (digits.length === 4) _checkPin();
@@ -181,16 +214,7 @@ function _lockApp() {
   if (PrivacyOverlay.isEnabled()) PrivacyOverlay.disable();
 }
 
-async function _biometricUnlock() {
-  if (!window.PublicKeyCredential) { _toast('Biometrics not available', 'red'); return; }
-  try {
-    await navigator.credentials.get({publicKey: {challenge: new Uint8Array(32), rpId: location.hostname, userVerification: 'required', timeout: 30000}});
-    try { await Vault.unlock(PIN); } catch {}
-    _showApp();
-  } catch {
-    _toast('Biometric failed — use PIN', 'red');
-  }
-}
+	/* ── PANIC ── */
 
 /* ── AUTO-LOCK ── */
 function _resetAutoLock() {
@@ -304,6 +328,7 @@ function _initSettings() {
   document.getElementById('githubBtn')?.addEventListener('click', () => window.open('https://github.com/alpha-1-design/BLACKBOX', '_blank'));
   document.getElementById('faqBtn')?.addEventListener('click', _showFaq);
   document.getElementById('privacyPolicyBtn')?.addEventListener('click', _showPrivacyPolicy);
+  document.getElementById('updateStatus')?.addEventListener('click', _checkUpdate);
 }
 
 function _syncToggle(id, val, onChange) {
@@ -344,7 +369,7 @@ function _showFaq() {
     { q: 'Is BLACKBOX open source?', a: 'Yes. The full source code is available on GitHub under the MIT license.' },
     { q: 'Where is my data stored?', a: 'All data is stored locally on your device in encrypted form. Nothing is sent to any server.' },
     { q: 'What if I forget my PIN?', a: 'PIN recovery is impossible by design — there is no backdoor. A factory reset will wipe all data.' },
-    { q: 'Is there cloud sync?', a: 'No. BLACKBOX is 100% offline. Use the encrypted backup/import feature to transfer data.' },
+    { q: 'Is there cloud sync?', a: 'No. BLACKBOX is offline-only. The only network call is an optional manual update check — no data ever leaves your device.' },
     { q: 'How strong is the encryption?', a: 'AES-256-GCM with PBKDF2-SHA256 key derivation (150,000 iterations). Industry standard.' },
     { q: 'Can I use biometrics?', a: 'Yes, if your device supports fingerprint or face unlock, you can enable it in Settings.' }
   ];
@@ -360,7 +385,8 @@ Last updated: 2026-05-01
 BLACKBOX does not collect, transmit, or share any user data.
 
 • All data is stored locally on your device
-• No analytics, no tracking, no network calls
+• No analytics, no tracking, no background network calls
+• Optional manual update check (Settings → Check for Updates) fetches latest release version from GitHub
 • No third-party SDKs or services
 • Biometric data never leaves your device (handled by Android)
 • Clipboard content is cleared after 30 seconds
@@ -370,6 +396,41 @@ Contact: alpha-1-design via GitHub
 Full policy: https://github.com/alpha-1-design/BLACKBOX/blob/main/SECURITY.md`;
   alert(pp);
 }
+
+async function _checkUpdate() {
+  const el = document.getElementById('updateText');
+  const sub = document.getElementById('updateSub');
+  el.textContent = 'Checking...';
+  sub.textContent = 'Please wait';
+  const result = await Updater.check();
+  if (result.error) {
+    el.textContent = 'Check for Updates';
+    sub.textContent = result.error + ' — tap to retry';
+    return;
+  }
+  if (result.updateAvailable) {
+    el.textContent = 'Update v' + result.latestVersion + ' Available';
+    sub.textContent = 'Tap to download from F-Droid';
+    updateStatus._updateData = result;
+  } else {
+    el.textContent = 'BLACKBOX v' + Updater.currentVersion;
+    sub.textContent = 'You are up to date';
+  }
+}
+
+document.addEventListener('click', e => {
+  const el = document.getElementById('updateStatus');
+  if (!el || !el._updateData) return;
+  if (el.contains(e.target)) {
+    const r = el._updateData;
+    if (confirm('Update v' + r.latestVersion + ' available!\n\nOpen F-Droid to update?\n(Cancel to open GitHub Releases)')) {
+      Updater.openFdroid();
+    } else {
+      Updater.openGitHub();
+    }
+    el._updateData = null;
+  }
+});
 
 function _toast(msg, type) {
   const t = document.createElement('div');
