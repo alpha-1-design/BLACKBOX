@@ -41,8 +41,8 @@ function _initLock() {
   document.getElementById('biometricBtn')?.addEventListener('click', _biometricUnlock);
 
   // Register biometric auth if supported
-  if (typeof window.ShieldBiometric !== 'undefined') {
-    window.ShieldBiometric.isAvailable().then(res => {
+  if (window.Capacitor?.Plugins?.ShieldBiometric) {
+    window.Capacitor.Plugins.ShieldBiometric.isAvailable().then(res => {
       if (res.available) {
         document.getElementById('biometricBtn').style.display = 'block';
       }
@@ -81,8 +81,8 @@ function _showSetupPinModal() {
       modal.classList.add('hidden');
 
       // Prompt for biometric registration
-      if (typeof window.ShieldBiometric !== 'undefined') {
-        window.ShieldBiometric.isAvailable().then(res => {
+      if (window.Capacitor?.Plugins?.ShieldBiometric) {
+        window.Capacitor.Plugins.ShieldBiometric.isAvailable().then(res => {
           if (res.available && confirm('Register fingerprint/face for faster access?')) {
             _biometricUnlock();
           }
@@ -108,9 +108,9 @@ function _showSetupPinModal() {
 }
 
 async function _biometricUnlock() {
-  if (typeof window.ShieldBiometric === 'undefined') return;
+  if (!window.Capacitor?.Plugins?.ShieldBiometric) return;
   try {
-    const res = await window.ShieldBiometric.authenticate({ title: 'Unlock BLACKBOX' });
+    const res = await window.Capacitor.Plugins.ShieldBiometric.authenticate({ title: 'Unlock BLACKBOX' });
     if (res.success) {
       failCount = 0;
       await Vault.unlock(PIN);
