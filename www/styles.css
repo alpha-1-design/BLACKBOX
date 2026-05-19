@@ -185,7 +185,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .empty-state p{font-size:0.8rem;color:var(--text2);line-height:1.6}
 
 /* MODAL */
-.modal{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.modal{position:fixed;inset:0;z-index:1100;display:flex;align-items:flex-end;justify-content:center}
 .modal.hidden{display:none}
 .modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.35)}
 .modal-box{position:relative;z-index:1;width:100%;max-width:500px;background:var(--bg);border-top:1px solid var(--border);border-radius:18px 18px 0 0;padding:1rem 1rem 1.5rem;display:flex;flex-direction:column;max-height:85vh;animation:slideUp 0.25s var(--ease)}
