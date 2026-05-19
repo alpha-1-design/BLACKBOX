@@ -5,17 +5,21 @@ import android.view.WindowManager;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
 import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends BridgeActivity {
   @Override
+  protected List<Class<? extends Plugin>> getPlugins() {
+    ArrayList<Class<? extends Plugin>> plugins = new ArrayList<>();
+    plugins.add(ShieldBiometricPlugin.class);
+    plugins.add(ShieldPermissionsPlugin.class);
+    plugins.add(ShieldOverlayPlugin.class);
+    return plugins;
+  }
+
+  @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    
-    // Explicitly bridge the local plugins
-    this.bridge.getPluginManager().addPlugin(ShieldBiometricPlugin.class);
-    this.bridge.getPluginManager().addPlugin(ShieldPermissionsPlugin.class);
-    this.bridge.getPluginManager().addPlugin(ShieldOverlayPlugin.class);
-
     getWindow().setFlags(
       WindowManager.LayoutParams.FLAG_SECURE,
       WindowManager.LayoutParams.FLAG_SECURE
@@ -23,7 +27,7 @@ public class MainActivity extends BridgeActivity {
   }
 
   @Override
-  protected void onPause() {
+  public void onPause() {
     super.onPause();
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
   }
