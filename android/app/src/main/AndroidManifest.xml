@@ -26,8 +26,7 @@
       android:launchMode="singleTask"
       android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale"
       android:windowSoftInputMode="adjustResize"
-      android:exported="true"
-      android:windowSecureFlags="FLAG_SECURE">
+      android:exported="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
