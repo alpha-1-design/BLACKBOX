@@ -1,0 +1,75 @@
+name: Blackbox Build and OTA
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: .
+
+      - name: Sync Capacitor
+        run: npm run sync
+        working-directory: .
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build Android APK
+        working-directory: ./android
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: blackbox-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  ota:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate OTA Manifest
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            const crypto = require('crypto');
+            const manifest = {};
+            const webDir = 'www';
+            const files = fs.readdirSync(webDir, { recursive: true });
+            files.forEach(f => {
+              const fullPath = path.join(webDir, f);
+              if (fs.lstatSync(fullPath).isFile() && (f.endsWith('.js') || f.endsWith('.css'))) {
+                const content = fs.readFileSync(fullPath);
+                manifest[f] = { hash: crypto.createHash('sha256').update(content).digest('hex') };
+              }
+            });
+            fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));
+          "
+
+      - name: Deploy OTA Patches
+        run: |
+          echo 'Deploying patches to https://blackbox-patches.alpha1.design'
+          # Simulated deploy
+        env:
+          DEPLOY_TOKEN: ${{ secrets.OTA_DEPLOY_TOKEN }}
