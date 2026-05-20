@@ -26,7 +26,6 @@ public class ShieldBiometricPlugin extends Plugin {
         BiometricManager bm = BiometricManager.from(getContext());
         int result = bm.canAuthenticate(
             BiometricManager.Authenticators.BIOMETRIC_STRONG
-            | BiometricManager.Authenticators.BIOMETRIC_WEAK
         );
         JSObject r = new JSObject();
         switch (result) {
@@ -96,7 +95,6 @@ public class ShieldBiometricPlugin extends Plugin {
             .setNegativeButtonText(cancel)
             .setAllowedAuthenticators(
                 BiometricManager.Authenticators.BIOMETRIC_STRONG
-                | BiometricManager.Authenticators.BIOMETRIC_WEAK
             )
             .build();
 

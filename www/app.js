@@ -19,6 +19,7 @@ const App = { lock: _lockApp };
 
 window.addEventListener('DOMContentLoaded', () => {
   _initLock();
+  _initBiometric();
   _initNav();
   _initSettings();
   _initClipboard();
@@ -41,17 +42,6 @@ function _initLock() {
   document.getElementById('panicBtn')?.addEventListener('click', _triggerPanic);
   document.getElementById('biometricBtn')?.addEventListener('click', _biometricUnlock);
 
-  // Register biometric auth if supported
-  if (window.Capacitor?.Plugins?.ShieldBiometric) {
-    window.Capacitor.Plugins.ShieldBiometric.isAvailable()
-      .then(res => {
-        if (res.available) {
-          document.getElementById('biometricBtn').style.display = 'block';
-        }
-      })
-      .catch(() => {});
-  }
-
   let tapCount = 0;
   document.getElementById('panicOverlay')?.addEventListener('click', (e) => {
     if (!e.target.classList.contains('calc-btn')) {
@@ -62,6 +52,23 @@ function _initLock() {
 
   if (!PIN) {
     _showSetupPinModal();
+  }
+}
+
+function _initBiometric() {
+  async function check() {
+    if (!window.Capacitor?.Plugins?.ShieldBiometric) return;
+    try {
+      const res = await window.Capacitor.Plugins.ShieldBiometric.isAvailable();
+      if (res.available) {
+        document.getElementById('biometricBtn').style.display = 'block';
+      }
+    } catch {}
+  }
+  if (window.Capacitor) {
+    check();
+  } else {
+    window.addEventListener('capacitorReady', check, { once: true });
   }
 }
 
