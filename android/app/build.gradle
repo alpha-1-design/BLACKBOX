@@ -9,8 +9,17 @@ android {
     versionCode 2
     versionName "2.0.0"
   }
+  signingConfigs {
+    release {
+      storeFile file('../../keystore/debug.keystore')
+      storePassword 'android'
+      keyAlias 'debug'
+      keyPassword 'android'
+    }
+  }
   buildTypes {
     release {
+      signingConfig signingConfigs.release
       minifyEnabled true
       shrinkResources true
       proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'

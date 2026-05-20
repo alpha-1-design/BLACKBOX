@@ -40,6 +40,7 @@ Builds:
       - npm install
       - npx cap sync android
     output: android/app/build/outputs/apk/release/app-release-unsigned.apk
+    build: cd android && ./gradlew assembleRelease
     srclibs:
       - repo: https://github.com/alpha-1-design/BLACKBOX.git
 
