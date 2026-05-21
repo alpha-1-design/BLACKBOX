@@ -7,6 +7,7 @@ Welcome to the BLACKBOX Wiki. This is the central repository for deep-dive techn
 * [OTA Patching Protocol](OTA-Patching.md)
 * [Biometric Integration](Biometric-Integration.md)
 * [F-Droid Build Standards](F-Droid-Build.md)
+* [F-Droid Pipeline Debug Postmortem](F-Droid-Pipeline-Debug.md)
 
 ---
 ## Security Architecture
