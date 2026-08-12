@@ -7,3 +7,6 @@ android/build/
 keystore/*.jks
 .DS_Store
 custom-plugins/
+*.keystore
+keystore/
+*.jks

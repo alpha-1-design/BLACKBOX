@@ -28,9 +28,24 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Decode release keystore
+        working-directory: ./android
+        run: |
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > app/release.keystore
+          echo "RELEASE_KEYSTORE_PATH=$(pwd)/app/release.keystore" >> "$GITHUB_ENV"
+
       - name: Build release APK
         working-directory: ./android
+        env:
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: ./gradlew assembleRelease
+
+      - name: Clean up keystore
+        if: always()
+        working-directory: ./android
+        run: rm -f app/release.keystore
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
