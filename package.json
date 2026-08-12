@@ -1,6 +1,6 @@
 {
   "name": "blackbox",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "BLACKBOX — Offline encrypted security hub for developers",
   "scripts": {
     "sync": "npx cap sync android",
