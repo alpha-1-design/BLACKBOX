@@ -1,0 +1,22 @@
+name: Mirror to GitLab
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror repository to GitLab
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GL_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          REPO: alpha-1-design/BLACKBOX
+        run: |
+          git clone --mirror "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" mirror.git
+          cd mirror.git
+          git push --mirror "https://oauth2:${GL_TOKEN}@gitlab.com/${REPO}.git"
