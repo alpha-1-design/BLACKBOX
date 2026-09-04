@@ -70,9 +70,11 @@ const Vault = (() => {
     const r = _raw(STORES.files), e = r[id]; if (!e) return;
     const b64 = await _dec(e.eD), name = await _dec(e.eN);
     const bytes = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
-    const url = URL.createObjectURL(new Blob([bytes], {type: e.type||'application/octet-stream'}));
-    Object.assign(document.createElement('a'), {href:url, download:name}).click();
-    URL.revokeObjectURL(url);
+    const blob = new Blob([bytes], {type: e.type||'application/octet-stream'});
+    const res = await _saveToDevice(name, blob);
+    if (res.uri) _notify(`Saved to Documents/BLACKBOX/${name}`);
+    else if (!res.web) _notify('File could not be saved', 'red');
+    else _notify('File downloaded');
   }
   async function deleteFile(id) { const f = _raw(STORES.files); delete f[id]; _save(STORES.files, f); }
 
@@ -143,14 +145,79 @@ const Vault = (() => {
   }
   function clearClip() { localStorage.removeItem(STORES.clip); }
 
+  /* ── Native file output (Capacitor Filesystem + Share) ── */
+  function _capPlugin(name) {
+    try { return window.Capacitor?.Plugins?.[name] || null; } catch { return null; }
+  }
+  function _blobToBase64(blob) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result).split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(blob);
+    });
+  }
+  function _notify(msg, type) {
+    try {
+      const t = document.createElement('div');
+      t.className = 'toast ' + (type || 'green');
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    } catch (e) { /* ignore */ }
+  }
+
+  /**
+   * Save a blob to the device. In the Capacitor WebView a hidden <a download>
+   * click does nothing and gives the user no idea where the file went, so we
+   * write through the native Filesystem plugin to Documents and then offer the
+   * share sheet so the user can send/save it wherever they want.
+   * Falls back to the classic browser download when no native bridge exists.
+   */
+  async function _saveToDevice(name, blob) {
+    const FS = _capPlugin('Filesystem');
+    const Share = _capPlugin('Share');
+    if (FS) {
+      try {
+        const data = await _blobToBase64(blob);
+        const path = 'Exports/' + name;
+        await FS.writeFile({ path, data, directory: 'Documents', recursive: true });
+        const uri = (await FS.getUri({ path, directory: 'Documents' })).uri;
+        if (Share) {
+          try {
+            // Share needs a uri the plugin can serve — a cache copy is guaranteed shareable.
+            await FS.writeFile({ path, data, directory: 'Cache', recursive: true });
+            const cacheUri = (await FS.getUri({ path, directory: 'Cache' })).uri;
+            await Share.share({ title: name, dialogTitle: 'BLACKBOX export — save or share', files: [cacheUri] });
+            return { ok: true, uri, shared: true };
+          } catch (e) { /* user dismissed the share sheet — the Documents copy is already saved */ }
+        }
+        return { ok: true, uri, shared: false };
+      } catch (e) {
+        console.warn('[BLACKBOX] native save failed, falling back to web download:', e);
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    Object.assign(document.createElement('a'), { href: url, download: name }).click();
+    URL.revokeObjectURL(url);
+    return { ok: true, uri: null, web: true };
+  }
+
   /* ── Backup / Restore ── */
   async function exportBackup() {
     const data = {v:3, ts: Date.now()};
     for (const [name, key] of Object.entries(STORES)) { data[name] = _raw(key); }
-    const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    Object.assign(document.createElement('a'), {href:url, download:`blackbox-backup-${Date.now()}.blackbox`}).click();
-    URL.revokeObjectURL(url);
+    const name = `blackbox-backup-${Date.now()}.blackbox`;
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const res = await _saveToDevice(name, blob);
+    if (res.uri) {
+      _notify(`Backup saved to Documents/BLACKBOX/${name}${res.shared ? ' — and shared' : ''}`);
+    } else if (!res.web) {
+      _notify('Backup could not be saved', 'red');
+    } else {
+      _notify('Backup downloaded');
+    }
+    return res;
   }
   async function importBackup(file) {
     const text = await new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsText(file); });

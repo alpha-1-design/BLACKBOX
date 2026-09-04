@@ -46,7 +46,7 @@ const SecretsModule = (() => {
           <span class="secret-item-name">${Vault.esc(s.name)}</span>
           <span class="secret-item-cat">${s.category}</span>
         </div>
-        <div class="secret-item-preview value-hidden" data-value="${Vault.esc(s.value)}">Click to reveal</div>
+        <div class="secret-item-preview value-hidden">Click to reveal</div>
         <div class="secret-item-meta">
           <span class="secret-item-date">${Vault.relTime(s.ts)}</span>
           <div class="secret-item-actions">
@@ -68,8 +68,10 @@ const SecretsModule = (() => {
       el.addEventListener('click', e => {
         if (e.target.closest('.secret-action-btn')) return;
         const preview = el.querySelector('.secret-item-preview');
+        const secret = _secrets.find(x => x.id === el.dataset.id);
+        if (!secret) return;
         if (preview.classList.contains('value-hidden')) {
-          preview.textContent = el.dataset.value;
+          preview.textContent = secret.value;
           preview.classList.remove('value-hidden');
         } else {
           preview.textContent = 'Click to reveal';
