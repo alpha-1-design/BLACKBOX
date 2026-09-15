@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2.0.3] — 2026-09-15
+- Fix: **startup crash on Android 14+** — removed `@capacitor/share` v5, whose `load()` registers a `BroadcastReceiver` without the `RECEIVER_EXPORTED`/`RECEIVER_NOT_EXPORTED` flag required when targeting SDK 34 (`SecurityException` at plugin registration, before the UI could render).
+- Fix: exports/backup files are now written to `Documents/BLACKBOX/` as promised (the previous build wrote to `Documents/Exports/` while the toast claimed `BLACKBOX/`).
+- Share-sheet is gone for now; the saved file's real path is shown and the file can be opened from any Files app. A safe share implementation may return later.
+
 ## [2.0.2] — 2026-09-04
 - Fix: secret list "click to reveal" now actually reveals the decrypted value.
 - Fix: backups and file downloads now save via the native Filesystem plugin to `Documents/BLACKBOX/` (with the path shown) and offer a share sheet — no more invisible downloads.

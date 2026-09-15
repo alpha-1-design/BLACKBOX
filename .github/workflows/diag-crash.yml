@@ -1,0 +1,75 @@
+name: Diagnostic crash repro
+
+on:
+  push:
+    branches: [diag/crash-repro, fix/startup-crash-v2.0.3]
+  workflow_dispatch:
+
+jobs:
+  repro:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Download release APKs
+        run: |
+          curl -sL -o v201.apk https://github.com/${{ github.repository }}/releases/download/v2.0.1/BLACKBOX-v2.0.1-release.apk
+          curl -sL -o v202.apk https://github.com/${{ github.repository }}/releases/download/v2.0.2/BLACKBOX-v2.0.2-release.apk
+          ls -la *.apk && sha256sum *.apk
+
+      - name: Build from source (release, minified) and sign with ephemeral key
+        run: |
+          npm install --no-audit --no-fund
+          npx cap sync android
+          cd android
+          ./gradlew --no-daemon assembleRelease
+          ls app/build/outputs/apk/release/
+          keytool -genkeypair -keystore /tmp/diag.keystore -alias diag -storepass diagpass -keypass diagpass \
+            -dname "CN=Diag,O=Diag,C=US" -keyalg RSA -keysize 2048 -validity 30
+          $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+            --ks /tmp/diag.keystore --ks-pass pass:diagpass --key-pass pass:diagpass \
+            --out ../vsrc-minified.apk app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: Build non-minified release (R8 bisection case)
+        run: |
+          sed -i -e 's/minifyEnabled true/minifyEnabled false/' -e 's/shrinkResources true/shrinkResources false/' android/app/build.gradle
+          cd android
+          ./gradlew --no-daemon assembleRelease
+          $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+            --ks /tmp/diag.keystore --ks-pass pass:diagpass --key-pass pass:diagpass \
+            --out ../vsrc-nominify.apk app/build/outputs/apk/release/app-release-unsigned.apk
+          cd ..
+          ls -la vsrc-*.apk
+
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          disable-animations: true
+          script: bash ci/crash-repro.sh
+
+      - name: Upload crash logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crash-logs
+          path: |
+            logcat-*.txt
+            android/app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: warn

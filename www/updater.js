@@ -1,6 +1,6 @@
 const Updater = {
   repo: 'alpha-1-design/Blackbox',
-  currentVersion: '2.0.0',
+  currentVersion: '2.0.3',
   fdroidUrl: 'https://f-droid.org/packages/com.blackbox.app/',
   githubReleasesUrl: 'https://github.com/alpha-1-design/Blackbox/releases',
 
