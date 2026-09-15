@@ -1,6 +1,8 @@
 name: Diagnostic crash repro
 
 on:
+  push:
+    branches: [diag/crash-repro]
   workflow_dispatch:
 
 jobs:
