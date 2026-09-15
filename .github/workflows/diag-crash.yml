@@ -45,7 +45,7 @@ jobs:
 
       - name: Build non-minified release (R8 bisection case)
         run: |
-          sed -i 's/minifyEnabled true/minifyEnabled false/' android/app/build.gradle
+          sed -i -e 's/minifyEnabled true/minifyEnabled false/' -e 's/shrinkResources true/shrinkResources false/' android/app/build.gradle
           cd android
           ./gradlew --no-daemon assembleRelease
           $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
