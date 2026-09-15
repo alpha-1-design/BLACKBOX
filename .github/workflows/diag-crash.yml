@@ -2,7 +2,7 @@ name: Diagnostic crash repro
 
 on:
   push:
-    branches: [diag/crash-repro]
+    branches: [diag/crash-repro, fix/startup-crash-v2.0.3]
   workflow_dispatch:
 
 jobs:
