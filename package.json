@@ -1,8 +1,9 @@
 {
   "name": "blackbox",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "BLACKBOX — Offline encrypted security hub for developers",
   "scripts": {
+    "test": "node ci/checks.js",
     "sync": "npx cap sync android",
     "open": "npx cap open android",
     "serve": "npx serve www -p 3000"
@@ -11,7 +12,6 @@
     "@capacitor/android": "^5.0.0",
     "@capacitor/core": "^5.0.0",
     "@capacitor/filesystem": "^5.2.2",
-    "@capacitor/share": "^5.0.8",
     "@capacitor/splash-screen": "^5.0.0",
     "@capacitor/status-bar": "^5.0.0"
   },

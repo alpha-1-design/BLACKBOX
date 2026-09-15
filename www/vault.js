@@ -145,7 +145,7 @@ const Vault = (() => {
   }
   function clearClip() { localStorage.removeItem(STORES.clip); }
 
-  /* ── Native file output (Capacitor Filesystem + Share) ── */
+  /* ── Native file output (Capacitor Filesystem) ── */
   function _capPlugin(name) {
     try { return window.Capacitor?.Plugins?.[name] || null; } catch { return null; }
   }
@@ -170,28 +170,22 @@ const Vault = (() => {
   /**
    * Save a blob to the device. In the Capacitor WebView a hidden <a download>
    * click does nothing and gives the user no idea where the file went, so we
-   * write through the native Filesystem plugin to Documents and then offer the
-   * share sheet so the user can send/save it wherever they want.
+   * write through the native Filesystem plugin to Documents/BLACKBOX/ and
+   * return the real URI so the UI can show exactly where the file landed.
    * Falls back to the classic browser download when no native bridge exists.
+   *
+   * NOTE: do not re-add @capacitor/share@5 — its load() registers a
+   * BroadcastReceiver without RECEIVER_EXPORTED/NOT_EXPORTED, which is a
+   * fatal SecurityException on Android 14+ when targeting SDK 34.
    */
   async function _saveToDevice(name, blob) {
     const FS = _capPlugin('Filesystem');
-    const Share = _capPlugin('Share');
     if (FS) {
       try {
         const data = await _blobToBase64(blob);
-        const path = 'Exports/' + name;
+        const path = 'BLACKBOX/' + name;
         await FS.writeFile({ path, data, directory: 'Documents', recursive: true });
         const uri = (await FS.getUri({ path, directory: 'Documents' })).uri;
-        if (Share) {
-          try {
-            // Share needs a uri the plugin can serve — a cache copy is guaranteed shareable.
-            await FS.writeFile({ path, data, directory: 'Cache', recursive: true });
-            const cacheUri = (await FS.getUri({ path, directory: 'Cache' })).uri;
-            await Share.share({ title: name, dialogTitle: 'BLACKBOX export — save or share', files: [cacheUri] });
-            return { ok: true, uri, shared: true };
-          } catch (e) { /* user dismissed the share sheet — the Documents copy is already saved */ }
-        }
         return { ok: true, uri, shared: false };
       } catch (e) {
         console.warn('[BLACKBOX] native save failed, falling back to web download:', e);
@@ -211,7 +205,7 @@ const Vault = (() => {
     const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
     const res = await _saveToDevice(name, blob);
     if (res.uri) {
-      _notify(`Backup saved to Documents/BLACKBOX/${name}${res.shared ? ' — and shared' : ''}`);
+      _notify(`Backup saved to Documents/BLACKBOX/${name}`);
     } else if (!res.web) {
       _notify('Backup could not be saved', 'red');
     } else {
