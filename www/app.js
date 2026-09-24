@@ -2,8 +2,8 @@ const PIN_KEY = 'bb_pin';
 const DECOY_KEY = 'bb_decoy';
 const SETT_KEY = 'bb_settings';
 
-let PIN = localStorage.getItem(PIN_KEY) || null;
-let DECOY_PIN = localStorage.getItem(DECOY_KEY) || '';
+let PIN = localStorage.getItem(PIN_KEY) || null; // SHA-256 hex verifier
+let DECOY_PIN = localStorage.getItem(DECOY_KEY) || ''; // SHA-256 hex verifier
 let digits = [];
 let activeTab = 'home';
 let _setupActive = false;
@@ -12,35 +12,129 @@ let lockoutEnd = 0;
 let lockoutInterval = null;
 let autoLockTimer = null;
 
-let S = {blur: false, shake: false, autoLock: true, selfDestruct: false};
+let S = {blur: false, shake: false, autoLock: true, selfDestruct: false, alive: false, wallpaper: 'none'};
 try { S = {...S, ...JSON.parse(localStorage.getItem(SETT_KEY) || '{}')}; } catch {}
 
 const App = { lock: _lockApp };
 
 window.addEventListener('DOMContentLoaded', () => {
+  // About-section version always comes from the single source of truth
+  // (updater.js currentVersion, enforced == package.json == gradle by ci/checks.js)
+  const aboutVersion = document.getElementById('aboutVersion');
+  if (aboutVersion && window.Updater) aboutVersion.textContent = 'BLACKBOX v' + Updater.currentVersion;
+
+  _initDialogs();
   _initLock();
   _initBiometric();
   _initNav();
   _initSettings();
-  _initClipboard();
   _applySettings();
   SecretsModule.init();
+  FilesManager.init();
   JournalModule.init();
   AuthModule.init();
   PrivacyModule.init();
+  EncClipboard.init();
+  VoiceModule.init();
+
+  // Appearance suite (alive colours, wallpapers) + tour
+  Appearance.apply();
+  _syncToggle('aliveToggle', S.alive, v => { S.alive = v; _saveSett(); Appearance.apply(); });
+  const wallSel = document.getElementById('wallpaperSelect');
+  if (wallSel) {
+    wallSel.value = S.wallpaper;
+    wallSel.addEventListener('change', () => { S.wallpaper = wallSel.value; _saveSett(); Appearance.apply(); });
+  }
+  document.getElementById('coolTourBtn')?.addEventListener('click', () => CoolTour.open());
+  document.getElementById('closeCoolModal')?.addEventListener('click', () => document.getElementById('coolModal').classList.add('hidden'));
 });
 
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) _lockApp();
+  if (document.hidden && Vault.isUnlocked()) _lockApp();
 });
 
-/* ── LOCK ── */
+/* ══════════════════════════════════════════════
+   IN-APP DIALOGS — replaces all native
+   alert()/confirm()/prompt() popups, which render
+   in the OS theme (not ours) and trap flows.
+   ══════════════════════════════════════════════ */
+const Dialog = (() => {
+  let alertRes = null, confirmRes = null, promptRes = null;
+
+  function show(id) { document.getElementById(id)?.classList.remove('hidden'); }
+  function hide(id) { document.getElementById(id)?.classList.add('hidden'); }
+
+  function init() {
+    document.getElementById('infoOk')?.addEventListener('click', () => { hide('infoModal'); if (alertRes) { alertRes(); alertRes = null; } });
+    document.getElementById('infoX')?.addEventListener('click', () => { hide('infoModal'); if (alertRes) { alertRes(); alertRes = null; } });
+    document.getElementById('deleteCancel')?.addEventListener('click', () => { hide('deleteModal'); if (confirmRes) { confirmRes(false); confirmRes = null; } });
+    document.getElementById('deleteOk')?.addEventListener('click', () => { hide('deleteModal'); if (confirmRes) { confirmRes(true); confirmRes = null; } });
+    document.getElementById('promptCancel')?.addEventListener('click', () => { hide('promptModal'); if (promptRes) { promptRes(null); promptRes = null; } });
+    document.getElementById('promptOk')?.addEventListener('click', () => {
+      const v = document.getElementById('promptInput').value;
+      hide('promptModal'); if (promptRes) { promptRes(v); promptRes = null; }
+    });
+    document.getElementById('promptInput')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); document.getElementById('promptOk').click(); }
+    });
+  }
+
+  function uiAlert(title, msg) {
+    document.getElementById('infoTitle').textContent = title;
+    document.getElementById('infoBody').textContent = msg;
+    show('infoModal');
+    return new Promise(res => { alertRes = res; });
+  }
+
+  /** Returns Promise<boolean>. `danger` styles OK red. Custom labels supported. */
+  function uiConfirm(title, msg, opts) {
+    opts = opts || {};
+    document.getElementById('deleteTitle').textContent = title;
+    document.getElementById('deleteMsg').textContent = msg;
+    const okBtn = document.getElementById('deleteOk');
+    const cancelBtn = document.getElementById('deleteCancel');
+    okBtn.textContent = opts.okLabel || 'OK';
+    cancelBtn.textContent = opts.cancelLabel || 'Cancel';
+    okBtn.classList.toggle('danger-btn', !!opts.danger);
+    show('deleteModal');
+    return new Promise(res => { confirmRes = res; });
+  }
+
+  /** Returns Promise<string|null>. */
+  function uiPrompt(title, placeholder, opts) {
+    opts = opts || {};
+    document.getElementById('promptTitle').textContent = title;
+    const inp = document.getElementById('promptInput');
+    inp.value = '';
+    inp.placeholder = placeholder || '';
+    inp.type = opts.type || 'text';
+    inp.autocomplete = 'off';
+    show('promptModal');
+    setTimeout(() => inp.focus(), 60);
+    return new Promise(res => { promptRes = res; });
+  }
+
+  return { init, uiAlert, uiConfirm, uiPrompt };
+})();
+
+// Short aliases used across modules
+function uiAlert(t, m) { return Dialog.uiAlert(t, m); }
+function uiConfirm(t, m, o) { return Dialog.uiConfirm(t, m, o); }
+function uiPrompt(t, p, o) { return Dialog.uiPrompt(t, p, o); }
+function _initDialogs() { Dialog.init(); }
+
+/* ══════════════════════════════════════════════
+   LOCK
+   ══════════════════════════════════════════════ */
 function _initLock() {
-  document.querySelectorAll('.num-key[data-digit]').forEach(b => b.addEventListener('click', () => _addDigit(b.dataset.digit)));
+  document.querySelectorAll('#numpad .num-key[data-digit]').forEach(b => b.addEventListener('click', () => _addDigit(b.dataset.digit)));
   document.getElementById('delBtn')?.addEventListener('click', _delDigit);
   document.getElementById('decoyBtn')?.addEventListener('click', _triggerPanic);
   document.getElementById('panicBtn')?.addEventListener('click', _triggerPanic);
   document.getElementById('biometricBtn')?.addEventListener('click', _biometricUnlock);
+
+  // Decoy calculator keypad (replaces inline onclick + eval)
+  document.querySelectorAll('.calc-btn[data-calc]').forEach(b => b.addEventListener('click', () => _calcInput(b.dataset.calc)));
 
   let tapCount = 0;
   document.getElementById('panicOverlay')?.addEventListener('click', (e) => {
@@ -50,9 +144,7 @@ function _initLock() {
     }
   });
 
-  if (!PIN) {
-    _showSetupPinModal();
-  }
+  if (!PIN) _showSetupPinModal();
 }
 
 function _initBiometric() {
@@ -72,51 +164,68 @@ function _initBiometric() {
   }
 }
 
+/* ── PIN SETUP (with confirm step — a typo must never lock you out) ── */
 function _showSetupPinModal() {
   const modal = document.getElementById('setupPinModal');
-  if (!modal) return;
+  const confirmModal = document.getElementById('confirmPinModal');
+  if (!modal || !confirmModal) return;
   _setupActive = true;
   modal.classList.remove('hidden');
 
   const setupDots = [0, 1, 2, 3].map(i => document.getElementById('sd' + i));
+  const confirmDots = [0, 1, 2, 3].map(i => document.getElementById('cp' + i));
   let setupDigits = [];
+  let confirmDigits = [];
+  let firstPin = null;
 
-  const updateSetupDots = () => {
-    setupDots.forEach((dot, i) => dot.classList.toggle('filled', i < setupDigits.length));
+  const updateDots = (dots, arr) => dots.forEach((dot, i) => dot && dot.classList.toggle('filled', i < arr.length));
+
+  const bindKeys = (root, dots, arr, onDone, delBtnId) => {
+    root.querySelectorAll('.num-key[data-digit]').forEach(b => b.addEventListener('click', () => {
+      if (arr.length < 4) {
+        arr.push(b.dataset.digit);
+        updateDots(dots, arr);
+        if (arr.length === 4) onDone();
+      }
+    }));
+    document.getElementById(delBtnId)?.addEventListener('click', () => {
+      if (arr.length > 0) { arr.pop(); updateDots(dots, arr); }
+    });
   };
 
-  const saveSetupPin = () => {
-    if (setupDigits.length === 4) {
-      PIN = setupDigits.join('');
-      localStorage.setItem(PIN_KEY, PIN);
-      _setupActive = false;
+  bindKeys(modal, setupDots, setupDigits, () => {
+    firstPin = setupDigits.join('');
+    setTimeout(() => {
       modal.classList.add('hidden');
+      confirmDigits = [];
+      updateDots(confirmDots, confirmDigits);
+      confirmModal.classList.remove('hidden');
+    }, 180);
+  }, 'setupDelBtn');
 
-      // Prompt for biometric registration
+  bindKeys(confirmModal, confirmDots, confirmDigits, async () => {
+    if (confirmDigits.join('') === firstPin) {
+      PIN = await Vault.hashPin(firstPin);
+      localStorage.setItem(PIN_KEY, PIN);
+      await Vault.unlockWithPin(firstPin); // derive master key immediately
+      _setupActive = false;
+      confirmModal.classList.add('hidden');
       if (window.Capacitor?.Plugins?.ShieldBiometric) {
-        window.Capacitor.Plugins.ShieldBiometric.isAvailable().then(res => {
-          if (res.available && confirm('Register fingerprint/face for faster access?')) {
+        try {
+          const res = await window.Capacitor.Plugins.ShieldBiometric.isAvailable();
+          if (res.available && await uiConfirm('Biometrics', 'Register fingerprint/face for faster access?', { okLabel: 'Yes', cancelLabel: 'Not now' })) {
             _biometricUnlock();
           }
-        }).catch(() => {});
+        } catch {}
       }
+    } else {
+      const errEl = document.getElementById('confirmError');
+      if (errEl) errEl.textContent = "PINs don't match — try again";
+      confirmDigits = [];
+      updateDots(confirmDots, confirmDigits);
+      setTimeout(() => { if (errEl) errEl.textContent = ''; }, 2000);
     }
-  };
-
-  modal.querySelectorAll('.num-key[data-digit]').forEach(b => b.addEventListener('click', () => {
-    if (setupDigits.length < 4) {
-      setupDigits.push(b.dataset.digit);
-      updateSetupDots();
-      if (setupDigits.length === 4) saveSetupPin();
-    }
-  }));
-
-  document.getElementById('setupDelBtn')?.addEventListener('click', () => {
-    if (setupDigits.length > 0) {
-      setupDigits.pop();
-      updateSetupDots();
-    }
-  });
+  }, 'confirmDelBtn');
 }
 
 async function _biometricUnlock() {
@@ -125,7 +234,7 @@ async function _biometricUnlock() {
     const res = await window.Capacitor.Plugins.ShieldBiometric.authenticate({ title: 'Unlock BLACKBOX' });
     if (res.success) {
       failCount = 0;
-      await Vault.unlock(PIN);
+      await Vault.unlockFromSession();
       _showApp();
     }
   } catch (e) { console.error('Biometric error:', e); }
@@ -156,10 +265,10 @@ async function _checkPin() {
   digits = [];
   _renderDots();
 
-  if (DECOY_PIN && entered === DECOY_PIN) { _triggerPanic(); return; }
-  if (entered === PIN) {
+  if (DECOY_PIN && await Vault.verifyPin(entered, DECOY_PIN)) { _triggerPanic(); return; }
+  if (PIN && await Vault.verifyPin(entered, PIN)) {
     failCount = 0;
-    try { await Vault.unlock(entered); } catch {}
+    try { await Vault.unlockWithPin(entered); } catch {}
     _showApp();
   } else {
     failCount++;
@@ -217,7 +326,9 @@ function _showApp() {
 }
 
 function _lockApp() {
+  if (!Vault.isUnlocked() && document.getElementById('lockScreen').classList.contains('active')) return;
   Vault.lock();
+  AuthModule.stopTimers();
   document.getElementById('lockScreen').classList.add('active');
   document.getElementById('mainApp').classList.add('hidden');
   digits = [];
@@ -226,8 +337,6 @@ function _lockApp() {
   _clearAutoLock();
   if (PrivacyOverlay.isEnabled()) PrivacyOverlay.disable();
 }
-
-	/* ── PANIC ── */
 
 /* ── AUTO-LOCK ── */
 function _resetAutoLock() {
@@ -244,12 +353,53 @@ document.addEventListener('touchstart', () => {
   if (!document.getElementById('lockScreen').classList.contains('active')) _resetAutoLock();
 }, {passive: true});
 
-/* ── PANIC ── */
+/* ── PANIC CALCULATOR (decoy) — no eval(), no globals on onclick ── */
+let calcExpr = '', calcPrev = null, calcOp = null, calcFresh = true;
+
+function _calcInput(v) {
+  const d = document.getElementById('calcDisplay');
+  if (!d) return;
+  if (v === 'AC') { calcExpr = ''; calcPrev = null; calcOp = null; calcFresh = true; d.textContent = '0'; return; }
+  if (v === '+/-') { const n = parseFloat(calcExpr); if (!isNaN(n)) { calcExpr = String(-n); d.textContent = calcExpr; } return; }
+  if (v === '%') { const n = parseFloat(calcExpr); if (!isNaN(n)) { calcExpr = String(n / 100); d.textContent = calcExpr; } return; }
+  if (v === '=') { _calcEquals(); return; }
+  if ('+-*/'.includes(v)) {
+    if (calcExpr !== '' && calcExpr !== '-') { calcPrev = parseFloat(calcExpr); calcOp = v; calcFresh = true; }
+    return;
+  }
+  if (calcFresh) { calcExpr = v === '.' ? '0.' : v; calcFresh = false; }
+  else {
+    if (v === '.' && calcExpr.includes('.')) return;
+    if (calcExpr.length >= 14) return;
+    calcExpr += v;
+  }
+  d.textContent = calcExpr;
+}
+
+function _calcEquals() {
+  const d = document.getElementById('calcDisplay');
+  if (calcOp === null || calcPrev === null || calcExpr === '') return;
+  const cur = parseFloat(calcExpr);
+  let r;
+  switch (calcOp) {
+    case '+': r = calcPrev + cur; break;
+    case '-': r = calcPrev - cur; break;
+    case '*': r = calcPrev * cur; break;
+    case '/': r = cur === 0 ? NaN : calcPrev / cur; break;
+  }
+  if (!isFinite(r)) { d.textContent = 'Error'; calcExpr = ''; calcPrev = null; calcOp = null; calcFresh = true; return; }
+  r = Math.round(r * 1e10) / 1e10;
+  calcExpr = String(r);
+  d.textContent = calcExpr;
+  calcPrev = null; calcOp = null; calcFresh = true;
+}
+
 function _triggerPanic() {
   document.getElementById('mainApp').classList.add('hidden');
   document.getElementById('lockScreen').classList.remove('active');
   document.getElementById('panicOverlay').classList.remove('hidden');
   Vault.lock();
+  AuthModule.stopTimers();
 }
 
 /* ── NAV ── */
@@ -266,7 +416,7 @@ function _switchTab(tab) {
     tc.classList.toggle('hidden', tc.id !== 'tab-' + tab);
     tc.classList.toggle('active', tc.id === 'tab-' + tab);
   });
-  if (tab === 'secrets') SecretsModule.refresh();
+  if (tab === 'secrets') { SecretsModule.refresh(); FilesManager.refresh(); }
   if (tab === 'journal') JournalModule.refresh();
   if (tab === 'auth') AuthModule.refresh();
 }
@@ -274,27 +424,9 @@ function _switchTab(tab) {
 /* ── REFRESH ALL ── */
 function _refreshAll() {
   SecretsModule.refresh();
+  FilesManager.refresh();
   JournalModule.refresh();
   AuthModule.refresh();
-}
-
-/* ── CLIPBOARD ── */
-function _initClipboard() {
-  document.getElementById('clipSaveBtn')?.addEventListener('click', async () => {
-    const text = document.getElementById('clipInput')?.value?.trim();
-    if (!text) return;
-    try {
-      await Vault.saveClip(text);
-      document.getElementById('clipStatus').textContent = 'Saved encrypted';
-      document.getElementById('clipStatus').style.color = 'var(--green)';
-      setTimeout(() => { Vault.clearClip(); document.getElementById('clipStatus').textContent = 'Cleared'; document.getElementById('clipStatus').style.color = 'var(--text3)'; }, 30000);
-    } catch { document.getElementById('clipStatus').textContent = 'Failed'; document.getElementById('clipStatus').style.color = 'var(--red)'; }
-  });
-  document.getElementById('clipClearBtn')?.addEventListener('click', () => {
-    document.getElementById('clipInput').value = '';
-    Vault.clearClip();
-    document.getElementById('clipStatus').textContent = '';
-  });
 }
 
 /* ── SETTINGS ── */
@@ -319,22 +451,51 @@ function _initSettings() {
   _syncToggle('selfDestructToggle', S.selfDestruct, v => { S.selfDestruct = v; _saveSett(); });
   _syncToggle('clipAutoClear', true, () => {});
 
-  document.getElementById('changePinBtn')?.addEventListener('click', _changePin);
-  document.getElementById('setupDecoyBtn')?.addEventListener('click', _setupDecoy);
-  document.getElementById('clearVaultBtn')?.addEventListener('click', () => {
-    if (confirm('Delete ALL data permanently?')) { Vault.clearAll(); _toast('Vault cleared', 'red'); }
+  document.getElementById('changePinBtn')?.addEventListener('click', _changePinFlow);
+  document.getElementById('setupDecoyBtn')?.addEventListener('click', _setupDecoyFlow);
+  document.getElementById('clearVaultBtn')?.addEventListener('click', async () => {
+    if (await uiConfirm('Clear All Data', 'Delete ALL data permanently? This cannot be undone.', { danger: true, okLabel: 'Delete Everything' })) {
+      Vault.clearAll();
+      _toast('Vault cleared', 'red');
+    }
   });
-  document.getElementById('resetAppBtn')?.addEventListener('click', () => {
-    if (confirm('Factory reset — wipe everything including PIN?')) { localStorage.clear(); location.reload(); }
+  document.getElementById('resetAppBtn')?.addEventListener('click', async () => {
+    if (await uiConfirm('Factory Reset', 'Wipe everything including your PIN and settings?', { danger: true, okLabel: 'Reset App' })) {
+      localStorage.clear();
+      location.reload();
+    }
   });
-  document.getElementById('exportSettingsBtn')?.addEventListener('click', () => Vault.exportBackup());
-  document.getElementById('importSettingsBtn')?.addEventListener('click', () => document.getElementById('importInput')?.click());
+  document.getElementById('exportSettingsBtn')?.addEventListener('click', async () => {
+    const pass = await uiPrompt('Encrypted Backup', 'Passphrase (min 8 chars) — needed to restore this backup', { type: 'password' });
+    if (pass === null) return;
+    if (pass.length < 8) { await uiAlert('Encrypted Backup', 'Use at least 8 characters so the backup stays safe.'); return; }
+    const confirm2 = await uiPrompt('Encrypted Backup', 'Confirm passphrase', { type: 'password' });
+    if (confirm2 === null) return;
+    if (confirm2 !== pass) { await uiAlert('Encrypted Backup', "Passphrases don't match — nothing was exported."); return; }
+    try { await Vault.exportEncryptedBackup(pass); }
+    catch (e) { await uiAlert('Encrypted Backup', e.message || 'Export failed.'); }
+  });
+  document.getElementById('importSettingsBtn')?.addEventListener('click', async () => {
+    const pass = await uiPrompt('Restore Backup', 'Backup passphrase', { type: 'password' });
+    if (pass === null) return;
+    document.getElementById('importInput')._pass = pass;
+    document.getElementById('importInput')?.click();
+  });
   document.getElementById('importInput')?.addEventListener('change', async e => {
     const f = e.target.files[0];
     if (!f) return;
-    const n = await Vault.importBackup(f);
-    _toast(`Imported ${n} items`);
-    _refreshAll();
+    try {
+      let n;
+      if (f.name.endsWith('.bbvault')) {
+        n = await Vault.importEncryptedBackup(f, document.getElementById('importInput')._pass || '');
+      } else {
+        n = await Vault.importBackup(f); // legacy .blackbox (ciphertext merge)
+      }
+      _toast(`Imported ${n} items`);
+      _refreshAll();
+    } catch (err) {
+      await uiAlert('Import Failed', err.message || 'This file is not a valid BLACKBOX backup.');
+    }
     e.target.value = '';
   });
   document.getElementById('websiteBtn')?.addEventListener('click', () => window.open('https://alpha1studio.vercel.app', '_blank'));
@@ -357,27 +518,52 @@ function _applySettings() {
 
 function _saveSett() { localStorage.setItem(SETT_KEY, JSON.stringify(S)); }
 
-function _changePin() {
-  const n = prompt('New 4-digit PIN:');
-  if (!n) return;
-  if (!/^\d{4}$/.test(n)) { alert('Must be 4 digits'); return; }
-  PIN = n;
-  localStorage.setItem(PIN_KEY, n);
-  _toast('PIN updated');
+/* ── CHANGE PIN — re-encrypts every store with the new PIN's key ── */
+async function _changePinFlow() {
+  const cur = await uiPrompt('Change PIN', 'Current PIN', { type: 'password' });
+  if (cur === null) return;
+  if (!/^\d{4}$/.test(cur)) { await uiAlert('Change PIN', 'The PIN must be exactly 4 digits.'); return; }
+  if (!PIN || !await Vault.verifyPin(cur, PIN)) { await uiAlert('Change PIN', 'That is not your current PIN.'); return; }
+
+  const next = await uiPrompt('Change PIN', 'New 4-digit PIN', { type: 'password' });
+  if (next === null) return;
+  if (!/^\d{4}$/.test(next)) { await uiAlert('Change PIN', 'The new PIN must be exactly 4 digits.'); return; }
+  if (next === cur) { await uiAlert('Change PIN', 'The new PIN must be different from the current one.'); return; }
+
+  const confirmPin = await uiPrompt('Change PIN', 'Confirm new PIN', { type: 'password' });
+  if (confirmPin === null) return;
+  if (confirmPin !== next) { await uiAlert('Change PIN', "PINs don't match — nothing was changed."); return; }
+
+  try {
+    await Vault.changePin(cur, next); // re-encrypts all stores under the new key
+    PIN = await Vault.hashPin(next);
+    localStorage.setItem(PIN_KEY, PIN);
+    _toast('PIN updated');
+  } catch (err) {
+    console.error('PIN change failed:', err);
+    await uiAlert('Change PIN', 'Something went wrong while re-encrypting. Your old PIN still works.');
+  }
 }
 
-function _setupDecoy() {
-  const d = prompt('Decoy PIN (leave blank to disable):');
+/* ── DECOY PIN ── */
+async function _setupDecoyFlow() {
+  const d = await uiPrompt('Decoy PIN', '4 digits — leave empty to disable', { type: 'password' });
   if (d === null) return;
-  if (d === '') { DECOY_PIN = ''; localStorage.removeItem(DECOY_KEY); _toast('Decoy disabled'); return; }
-  if (!/^\d{4}$/.test(d)) { alert('Must be 4 digits'); return; }
-  DECOY_PIN = d;
-  localStorage.setItem(DECOY_KEY, d);
+  if (d === '') {
+    DECOY_PIN = '';
+    localStorage.removeItem(DECOY_KEY);
+    _toast('Decoy disabled');
+    return;
+  }
+  if (!/^\d{4}$/.test(d)) { await uiAlert('Decoy PIN', 'The decoy must be exactly 4 digits.'); return; }
+  if (PIN && await Vault.verifyPin(d, PIN)) { await uiAlert('Decoy PIN', 'The decoy PIN must be different from your real PIN.'); return; }
+  DECOY_PIN = await Vault.hashPin(d);
+  localStorage.setItem(DECOY_KEY, DECOY_PIN);
   _toast('Decoy PIN set');
 }
 
-/* ── HELPERS ── */
-function _showFaq() {
+/* ── FAQ / PRIVACY POLICY — in-app modal, not native alert() ── */
+async function _showFaq() {
   const faq = [
     { q: 'Is BLACKBOX open source?', a: 'Yes. The full source code is available on GitHub under the MIT license.' },
     { q: 'Where is my data stored?', a: 'All data is stored locally on your device in encrypted form. Nothing is sent to any server.' },
@@ -386,30 +572,29 @@ function _showFaq() {
     { q: 'How strong is the encryption?', a: 'AES-256-GCM with PBKDF2-SHA256 key derivation (150,000 iterations). Industry standard.' },
     { q: 'Can I use biometrics?', a: 'Yes, if your device supports fingerprint or face unlock, you can enable it in Settings.' }
   ];
-  const out = faq.map(f => `<div class="faq-item"><strong>${f.q}</strong><p>${f.a}</p></div>`).join('');
-  alert('FAQ\n\n' + faq.map(f => 'Q: ' + f.q + '\nA: ' + f.a).join('\n\n'));
+  const html = faq.map(f => `<div class="faq-item"><strong>${f.q}</strong><p>${f.a}</p></div>`).join('');
+  document.getElementById('infoTitle').textContent = 'FAQ';
+  document.getElementById('infoBody').innerHTML = html;
+  document.getElementById('infoModal').classList.remove('hidden');
 }
 
-function _showPrivacyPolicy() {
-  const pp = `Privacy Policy
-
-Last updated: 2026-05-01
-
-BLACKBOX does not collect, transmit, or share any user data.
+async function _showPrivacyPolicy() {
+  const pp = `BLACKBOX does not collect, transmit, or share any user data.
 
 • All data is stored locally on your device
 • No analytics, no tracking, no background network calls
-• Optional manual update check (Settings → Check for Updates) fetches latest release version from GitHub
+• Optional manual update check (Settings → Check for Updates) fetches the latest release version from GitHub
 • No third-party SDKs or services
 • Biometric data never leaves your device (handled by Android)
 • Clipboard content is cleared after 30 seconds
 
 Contact: alpha-1-design via GitHub
 
-Full policy: https://github.com/alpha-1-design/BLACKBOX/blob/main/SECURITY.md`;
-  alert(pp);
+Full policy: github.com/alpha-1-design/BLACKBOX/blob/main/SECURITY.md`;
+  await uiAlert('Privacy Policy', pp);
 }
 
+/* ── UPDATES ── */
 async function _checkUpdate() {
   const el = document.getElementById('updateText');
   const sub = document.getElementById('updateSub');
@@ -423,28 +608,29 @@ async function _checkUpdate() {
   }
   if (result.updateAvailable) {
     el.textContent = 'Update v' + result.latestVersion + ' Available';
-    sub.textContent = 'Tap to download from F-Droid';
-    updateStatus._updateData = result;
+    sub.textContent = 'Tap for update options';
+    el.parentElement._updateData = result;
   } else {
     el.textContent = 'BLACKBOX v' + Updater.currentVersion;
     sub.textContent = 'You are up to date';
   }
 }
 
-document.addEventListener('click', e => {
+document.addEventListener('click', async e => {
   const el = document.getElementById('updateStatus');
   if (!el || !el._updateData) return;
   if (el.contains(e.target)) {
     const r = el._updateData;
-    if (confirm('Update v' + r.latestVersion + ' available!\n\nOpen F-Droid to update?\n(Cancel to open GitHub Releases)')) {
+    el._updateData = null;
+    if (await uiConfirm('Update v' + r.latestVersion, 'A new version is available. Where do you want to update?', { okLabel: 'F-Droid', cancelLabel: 'GitHub' })) {
       Updater.openFdroid();
     } else {
       Updater.openGitHub();
     }
-    el._updateData = null;
   }
 });
 
+/* ── TOAST ── */
 function _toast(msg, type) {
   const t = document.createElement('div');
   t.className = 'toast' + (type === 'red' ? ' red' : type === 'green' ? ' green' : '');

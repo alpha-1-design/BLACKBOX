@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-  <meta name="theme-color" content="#07070f"/>
+  <meta name="theme-color" content="#fafafa"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <title>BLACKBOX</title>
   <link rel="manifest" href="manifest.json"/>
@@ -89,31 +89,155 @@
   </div>
 </div>
 
+<!-- PIN CONFIRM MODAL (setup step 2 - a typo must never lock you out) -->
+<div id="confirmPinModal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Confirm Your PIN</span>
+    </div>
+    <div class="modal-body">
+      <p>Re-enter the same 4 digits to make sure there was no typo.</p>
+      <div class="pin-setup-display">
+        <span class="pin-dot" id="cp0"></span>
+        <span class="pin-dot" id="cp1"></span>
+        <span class="pin-dot" id="cp2"></span>
+        <span class="pin-dot" id="cp3"></span>
+      </div>
+      <div id="confirmError" class="pin-error" style="text-align:center"></div>
+      <div class="numpad setup-numpad">
+        <button class="num-key" data-digit="1">1</button>
+        <button class="num-key" data-digit="2">2</button>
+        <button class="num-key" data-digit="3">3</button>
+        <button class="num-key" data-digit="4">4</button>
+        <button class="num-key" data-digit="5">5</button>
+        <button class="num-key" data-digit="6">6</button>
+        <button class="num-key" data-digit="7">7</button>
+        <button class="num-key" data-digit="8">8</button>
+        <button class="num-key" data-digit="9">9</button>
+        <button class="num-key" id="confirmDelBtn">⌫</button>
+        <button class="num-key" data-digit="0">0</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INFO MODAL (alert-style: FAQ, privacy policy, messages) -->
+<div id="infoModal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title" id="infoTitle">Info</span>
+      <button class="modal-close-btn" id="infoX">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="infoBody" class="info-body"></div>
+      <div class="modal-actions-row">
+        <button type="button" class="modal-save" id="infoOk">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL (confirm-style, styled like the app) -->
+<div id="deleteModal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title" id="deleteTitle">Are you sure?</span>
+    </div>
+    <div class="modal-body">
+      <p id="deleteMsg" class="confirm-msg"></p>
+      <div class="modal-actions-row">
+        <button type="button" class="modal-cancel" id="deleteCancel">Cancel</button>
+        <button type="button" class="modal-save" id="deleteOk">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- VOICE NOTES MODAL -->
+<div id="voiceModal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Voice Notes</span>
+      <button class="modal-close-btn" id="closeVoiceModal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="voice-rec-row">
+        <button type="button" class="modal-save" id="voiceRecordBtn">Record</button>
+        <span id="voiceRecStatus" class="file-meta"></span>
+      </div>
+      <div class="voice-list" id="voiceList" style="margin-top:0.8rem"></div>
+      <audio id="voiceAudio" hidden></audio>
+      <div class="modal-actions-row">
+        <button type="button" class="modal-cancel" id="cancelVoiceBtn">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COOL TOUR MODAL -->
+<div id="coolModal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">BLACKBOX</span>
+      <button class="modal-close-btn" id="closeCoolModal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="coolBody"></div>
+  </div>
+</div>
+
+<!-- PROMPT MODAL (prompt-style, styled like the app) -->
+<div id="promptModal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title" id="promptTitle">Input</span>
+    </div>
+    <div class="modal-body">
+      <input type="text" id="promptInput" class="form-input" autocomplete="off"/>
+      <div class="modal-actions-row">
+        <button type="button" class="modal-cancel" id="promptCancel">Cancel</button>
+        <button type="button" class="modal-save" id="promptOk">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- PANIC CALCULATOR -->
 <div id="panicOverlay" class="panic-overlay hidden">
   <div class="panic-content">
     <div class="calc-title">Calculator</div>
     <div class="calc-display" id="calcDisplay">0</div>
     <div class="calc-grid">
-      <button class="calc-btn op" onclick="calcPress('AC')">AC</button>
-      <button class="calc-btn op" onclick="calcPress('+/-')">+/-</button>
-      <button class="calc-btn op" onclick="calcPress('%')">%</button>
-      <button class="calc-btn accent" onclick="calcPress('/')">÷</button>
-      <button class="calc-btn" onclick="calcPress('7')">7</button>
-      <button class="calc-btn" onclick="calcPress('8')">8</button>
-      <button class="calc-btn" onclick="calcPress('9')">9</button>
-      <button class="calc-btn accent" onclick="calcPress('*')">×</button>
-      <button class="calc-btn" onclick="calcPress('4')">4</button>
-      <button class="calc-btn" onclick="calcPress('5')">5</button>
-      <button class="calc-btn" onclick="calcPress('6')">6</button>
-      <button class="calc-btn accent" onclick="calcPress('-')">−</button>
-      <button class="calc-btn" onclick="calcPress('1')">1</button>
-      <button class="calc-btn" onclick="calcPress('2')">2</button>
-      <button class="calc-btn" onclick="calcPress('3')">3</button>
-      <button class="calc-btn accent" onclick="calcPress('+')">+</button>
-      <button class="calc-btn wide" onclick="calcPress('0')">0</button>
-      <button class="calc-btn" onclick="calcPress('.')">.</button>
-      <button class="calc-btn accent" onclick="calcPress('=')">=</button>
+      <button class="calc-btn op" data-calc="AC">AC</button>
+      <button class="calc-btn op" data-calc="+/-">+/-</button>
+      <button class="calc-btn op" data-calc="%">%</button>
+      <button class="calc-btn accent" data-calc="/">÷</button>
+      <button class="calc-btn" data-calc="7">7</button>
+      <button class="calc-btn" data-calc="8">8</button>
+      <button class="calc-btn" data-calc="9">9</button>
+      <button class="calc-btn accent" data-calc="*">×</button>
+      <button class="calc-btn" data-calc="4">4</button>
+      <button class="calc-btn" data-calc="5">5</button>
+      <button class="calc-btn" data-calc="6">6</button>
+      <button class="calc-btn accent" data-calc="-">−</button>
+      <button class="calc-btn" data-calc="1">1</button>
+      <button class="calc-btn" data-calc="2">2</button>
+      <button class="calc-btn" data-calc="3">3</button>
+      <button class="calc-btn accent" data-calc="+">+</button>
+      <button class="calc-btn wide" data-calc="0">0</button>
+      <button class="calc-btn" data-calc=".">.</button>
+      <button class="calc-btn accent" data-calc="=">=</button>
     </div>
     <div class="calc-exit-hint">tap 5× to exit</div>
   </div>
@@ -172,6 +296,13 @@
       <div class="feature-cards">
         <div class="feat-card">
           <div class="feat-header">
+            <span class="feat-title">Voice Notes</span>
+          </div>
+          <p>Record, replay, transcribe — encrypted like everything else.</p>
+          <button class="tool-btn" id="voiceCard" style="margin-top:0.6rem">Open Voice Notes</button>
+        </div>
+        <div class="feat-card">
+          <div class="feat-header">
             <span class="feat-title">Clipboard</span>
             <label class="toggle-switch"><input type="checkbox" id="clipAutoClear" checked/><span class="toggle-track"></span></label>
           </div>
@@ -208,10 +339,15 @@
     <div class="page-inner">
       <div class="tab-header">
         <h2>Secrets</h2>
-        <button class="add-btn" id="addSecretBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Add
-        </button>
+        <div class="header-actions">
+          <button class="add-btn" id="filesToggleBtn" title="Encrypted files">Files</button>
+          <button class="add-btn" id="sendPkgBtn" title="Send an encrypted package">Send</button>
+          <button class="add-btn" id="openPkgBtn" title="Open a .bbshare package">Open</button>
+          <button class="add-btn" id="addSecretBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add
+          </button>
+        </div>
       </div>
       <div class="search-bar">
         <input type="search" id="secretsSearch" placeholder="Search secrets…" class="search-input"/>
@@ -225,6 +361,89 @@
         <button class="pill" data-cat="other">Other</button>
       </div>
       <div class="secrets-list" id="secretsList"></div>
+
+      <!-- Encrypted File Vault -->
+      <div class="files-section hidden" id="filesSection">
+        <div class="files-header">
+          <h3>Encrypted Files</h3>
+          <div class="header-actions">
+            <button class="tool-btn secondary" id="importFileBtn">Import</button>
+            <button class="tool-btn secondary" id="closeFilesBtn">Close</button>
+          </div>
+        </div>
+        <p class="files-hint">Encrypted at rest (AES-256-GCM). Downloads land in Documents/BLACKBOX/.</p>
+        <div class="files-list" id="filesList"></div>
+        <input type="file" id="fileImportInput" hidden/>
+      </div>
+    </div>
+
+    <!-- Send Encrypted Package Modal -->
+    <div class="modal hidden" id="sendModal">
+      <div class="modal-backdrop"></div>
+      <div class="modal-box">
+        <div class="modal-header">
+          <span class="modal-title">Send Encrypted Package</span>
+          <button class="modal-close-btn" id="closeSendModal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <form id="sendForm" class="modal-form">
+          <label class="form-group">
+            <span class="form-label">File — photo, recording, anything</span>
+            <button type="button" class="tool-btn secondary" id="pickPkgFile">Choose file…</button>
+            <span id="pkgFileName" class="form-label" style="color:var(--text3);font-size:0.72rem"></span>
+            <input type="file" id="pkgFileInput" hidden/>
+          </label>
+          <label class="form-group">
+            <span class="form-label">Message (optional)</span>
+            <textarea id="pkgMessage" class="form-input form-textarea" placeholder="See attached…"></textarea>
+          </label>
+          <label class="form-group">
+            <span class="form-label">Shared PIN (min 4 chars — agree on it privately)</span>
+            <input type="password" id="pkgPin" class="form-input" autocomplete="off" required/>
+          </label>
+          <div class="modal-actions-row">
+            <button type="button" class="modal-cancel" id="cancelSendBtn">Cancel</button>
+            <button type="submit" class="modal-save">Create .bbshare</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Open Package Modal -->
+    <div class="modal hidden" id="openPkgModal">
+      <div class="modal-backdrop"></div>
+      <div class="modal-box">
+        <div class="modal-header">
+          <span class="modal-title">Open Package</span>
+          <button class="modal-close-btn" id="closeOpenModal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal-form">
+          <label class="form-group">
+            <span class="form-label">.bbshare file</span>
+            <button type="button" class="tool-btn secondary" id="pickOpenFile">Choose file…</button>
+            <span id="openFileName" class="form-label" style="color:var(--text3);font-size:0.72rem"></span>
+            <input type="file" id="openPkgInput" accept=".bbshare,application/json" hidden/>
+          </label>
+          <label class="form-group">
+            <span class="form-label">Shared PIN</span>
+            <input type="password" id="openPkgPin" class="form-input" autocomplete="off"/>
+          </label>
+          <div class="modal-actions-row">
+            <button type="button" class="modal-cancel" id="cancelOpenBtn">Close</button>
+            <button type="button" class="modal-save" id="unlockPkgBtn">Decrypt</button>
+          </div>
+          <div id="pkgOpenResult" class="hidden">
+            <div class="faq-item"><strong>Message</strong><p id="pkgMsgOut"></p></div>
+            <div class="faq-item"><strong>Attached file</strong><p id="pkgFileOut"></p></div>
+            <div class="modal-actions-row">
+              <button type="button" class="modal-save" id="savePkgFileBtn">Save file to Documents/BLACKBOX</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <!-- Add/Edit Secret Modal -->
     <div class="modal hidden" id="secretModal">
@@ -324,6 +543,7 @@
             <textarea id="journalBody" class="form-input form-textarea journal-textarea" placeholder="Write anything… it's encrypted."></textarea>
           </label>
           <div class="modal-actions-row">
+            <button type="button" class="modal-cancel danger-btn hidden" id="journalDelete">Delete</button>
             <button type="button" class="modal-cancel" id="cancelJournalBtn">Cancel</button>
             <button type="submit" class="modal-save">Save</button>
           </div>
@@ -389,7 +609,7 @@
       <div class="tab-header">
         <h2>Privacy</h2>
       </div>
-      <div class="privacy-grid">
+      <div class="privacy-grid" id="privacyGrid">
         <button class="privacy-card" id="permAuditBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
           <span>Permission Audit</span>
@@ -484,7 +704,7 @@
         <div class="settings-label">Data</div>
         <button class="settings-item" id="exportSettingsBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <div class="si-text"><strong>Export Encrypted Backup</strong><small>Save all data to a .blackbox file</small></div>
+          <div class="si-text"><strong>Export Encrypted Backup</strong><small>Everything, encrypted with its own passphrase (.bbvault)</small></div>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="si-arrow"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
         <button class="settings-item" id="importSettingsBtn">
@@ -492,7 +712,7 @@
           <div class="si-text"><strong>Import Backup</strong><small>Restore from a .blackbox file</small></div>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="si-arrow"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
-        <input type="file" id="importInput" accept=".blackbox,.json" hidden/>
+        <input type="file" id="importInput" accept=".blackbox,.bbvault,.json" hidden/>
         <button class="settings-item danger" id="clearVaultBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
           <div class="si-text"><strong>Clear All Data</strong><small>Permanently delete everything</small></div>
@@ -505,6 +725,30 @@
         </button>
       </div>
       <div class="settings-group">
+        <div class="settings-label">Appearance</div>
+        <div class="settings-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          <div class="si-text"><strong>Alive colours</strong><small>Liquid colour in motion behind your vault</small></div>
+          <label class="toggle-switch"><input type="checkbox" id="aliveToggle"/><span class="toggle-track"></span></label>
+        </div>
+        <div class="settings-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <div class="si-text"><strong>Wallpaper</strong><small>Backdrop for your notes pad</small></div>
+          <select id="wallpaperSelect" class="form-input" style="width:auto;padding:0.3rem 0.5rem">
+            <option value="none">None</option>
+            <option value="1">Midnight</option>
+            <option value="2">Sunset</option>
+            <option value="3">Ocean Fire</option>
+            <option value="4">Deep Space</option>
+          </select>
+        </div>
+        <button class="settings-item" id="coolTourBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <div class="si-text"><strong>Wanna see something cool?</strong><small>A 30-second tour of the new stuff</small></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="si-arrow"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <div class="settings-group">
         <div class="settings-label">About</div>
         <div class="settings-item info-item">
           <svg viewBox="0 0 48 48" fill="none" stroke="var(--text2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
@@ -512,7 +756,7 @@
             <rect x="19" y="20" width="10" height="20" rx="2"/>
             <circle cx="24" cy="25" r="2"/>
           </svg>
-          <div class="si-text"><strong>BLACKBOX v2.0</strong><small>AES-256-GCM · PBKDF2-SHA256 · No servers · No tracking</small></div>
+          <div class="si-text"><strong id="aboutVersion">BLACKBOX</strong><small>AES-256-GCM · PBKDF2-SHA256 · No servers · No tracking</small></div>
         </div>
         <button class="settings-item" id="faqBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -579,6 +823,10 @@
 <script src="shake.js"></script>
 <script src="clipboard.js"></script>
 <script src="secrets.js"></script>
+<script src="files.js"></script>
+<script src="appearance.js"></script>
+<script src="cool.js"></script>
+<script src="voice.js"></script>
 <script src="journal.js"></script>
 <script src="auth.js"></script>
 <script src="privacy.js"></script>
@@ -587,18 +835,7 @@
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('service-worker.js').catch(() => {});
 }
-// Calculator logic for decoy
-let calcExpr = '';
-function calcPress(v) {
-  const d = document.getElementById('calcDisplay');
-  if (v === 'AC') { calcExpr = ''; d.textContent = '0'; return; }
-  if (v === '=') {
-    try { calcExpr = String(eval(calcExpr) || 0); d.textContent = calcExpr; }
-    catch { d.textContent = 'Error'; calcExpr = ''; }
-    return;
-  }
-  calcExpr += v; d.textContent = calcExpr;
-}
+// Calculator logic lives in app.js (_calcInput) — the decoy keypad is bound there.
 </script>
 </body>
 </html>

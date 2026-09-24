@@ -1,6 +1,7 @@
 const AuthModule = (() => {
   let _totps = [];
   let _intervals = {};
+  let _codes = {}; // id -> {window, code} — cached so copy always has the real code
 
   function init() {
     document.getElementById('addTotpBtn')?.addEventListener('click', () => openForm());
@@ -12,11 +13,15 @@ const AuthModule = (() => {
 
   async function refresh() {
     if (!Vault.isUnlocked()) return;
-    Object.values(_intervals).forEach(clearInterval);
-    _intervals = {};
+    startTimers();
     _totps = await Vault.getAllTotp();
     render();
-    startTimers();
+  }
+
+  function stopTimers() {
+    Object.values(_intervals).forEach(clearInterval);
+    _intervals = {};
+    _codes = {};
   }
 
   function render() {
@@ -57,27 +62,27 @@ const AuthModule = (() => {
     list.querySelectorAll('.copy-totp').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
-        const codeEl = document.getElementById('code-' + btn.dataset.id);
-        if (codeEl) { navigator.clipboard.writeText(codeEl.textContent.replace(/\s/g, '')); toast('Code copied'); }
+        const code = _codes[btn.dataset.id];
+        if (code) { navigator.clipboard.writeText(code); toast('Code copied'); }
       });
     });
     list.querySelectorAll('.delete-totp').forEach(btn => {
       btn.addEventListener('click', async e => {
         e.stopPropagation();
-        if (confirm('Remove this 2FA code?')) {
+        const t = _totps.find(x => x.id === btn.dataset.id);
+        if (t && await uiConfirm('Remove 2FA', `Remove the code for "${t.account}"?`, { danger: true, okLabel: 'Remove' })) {
           await Vault.deleteTotp(btn.dataset.id);
           await refresh();
         }
       });
     });
+
+    _totps.forEach(t => updateTotp(t));
   }
 
   function startTimers() {
-    _totps.forEach(t => updateTotp(t));
     if (_intervals.main) clearInterval(_intervals.main);
-    _intervals.main = setInterval(() => {
-      _totps.forEach(t => updateTotp(t));
-    }, 1000);
+    _intervals.main = setInterval(() => { _totps.forEach(t => updateTotp(t)); }, 1000);
   }
 
   function updateTotp(t) {
@@ -87,28 +92,34 @@ const AuthModule = (() => {
     const now = Math.floor(Date.now() / 1000);
     const period = 30;
     const remaining = period - (now % period);
-    const code = generateTOTP(t.secret, now, t.digits);
-    codeEl.textContent = code.length > 6 ? code.slice(0,3) + ' ' + code.slice(3) : code;
+    const win = Math.floor(now / period);
+
+    // Recompute the code only when the 30s window rolls over (async-safe).
+    if (_codes[t.id]?.window !== win) {
+      _codes[t.id] = { window: win, code: '------' };
+      generateTOTP(t.secret, now, t.digits).then(code => {
+        if (_codes[t.id]?.window === win) _codes[t.id].code = code;
+        const el = document.getElementById('code-' + t.id);
+        if (el) el.textContent = code.length > 6 ? code.slice(0,3) + ' ' + code.slice(3) : code;
+      }).catch(() => {});
+    }
+    const cached = _codes[t.id].code;
+    if (cached !== '------') codeEl.textContent = cached.length > 6 ? cached.slice(0,3) + ' ' + cached.slice(3) : cached;
     progEl.style.width = ((remaining / period) * 100) + '%';
     if (remaining <= 5) progEl.style.background = 'var(--red)';
     else progEl.style.background = 'var(--accent)';
   }
 
-  function generateTOTP(secret, timestamp, digits) {
-    try {
-      const key = base32ToBytes(secret.replace(/\s/g, ''));
-      const time = Math.floor(timestamp / 30);
-      const timeBytes = new Uint8Array(8);
-      for (let i = 7; i >= 0; i--) { timeBytes[i] = time & 0xff; time >>= 8; }
-      return hmacSHA1(key, timeBytes).then(hmac => {
-        const offset = hmac[hmac.length - 1] & 0x0f;
-        const binary = ((hmac[offset] & 0x7f) << 24) | ((hmac[offset + 1] & 0xff) << 16) | ((hmac[offset + 2] & 0xff) << 8) | (hmac[offset + 3] & 0xff);
-        const otp = binary % Math.pow(10, digits);
-        return String(otp).padStart(digits, '0');
-      }).catch(() => '------');
-    } catch {
-      return '------';
-    }
+  async function generateTOTP(secret, timestamp, digits) {
+    const key = base32ToBytes(secret.replace(/\s/g, ''));
+    const time = Math.floor(timestamp / 30);
+    const timeBytes = new Uint8Array(8);
+    for (let i = 7; i >= 0; i--) { timeBytes[i] = time & 0xff; time >>= 8; }
+    const hmac = await hmacSHA1(key, timeBytes);
+    const offset = hmac[hmac.length - 1] & 0x0f;
+    const binary = ((hmac[offset] & 0x7f) << 24) | ((hmac[offset + 1] & 0xff) << 16) | ((hmac[offset + 2] & 0xff) << 8) | (hmac[offset + 3] & 0xff);
+    const otp = binary % Math.pow(10, digits);
+    return String(otp).padStart(digits, '0');
   }
 
   async function hmacSHA1(key, data) {
@@ -148,6 +159,12 @@ const AuthModule = (() => {
     const secret = document.getElementById('totpSecret').value.trim();
     const digits = parseInt(document.getElementById('totpDigits').value);
     if (!account || !secret) return;
+    try {
+      base32ToBytes(secret.replace(/\s/g, '')); // validate before saving
+    } catch {
+      await uiAlert('Invalid Secret', 'That does not look like a valid base32 TOTP secret. Copy it again from your provider.');
+      return;
+    }
     await Vault.saveTotp({account, secret, digits});
     closeForm();
     await refresh();
@@ -161,5 +178,5 @@ const AuthModule = (() => {
     setTimeout(() => t.remove(), 2000);
   }
 
-  return { init, refresh };
+  return { init, refresh, stopTimers };
 })();

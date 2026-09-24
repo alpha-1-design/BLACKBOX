@@ -1,8 +1,8 @@
 const Updater = {
-  repo: 'alpha-1-design/Blackbox',
-  currentVersion: '2.0.3',
+  repo: 'alpha-1-design/BLACKBOX',
+  currentVersion: '2.0.4',
   fdroidUrl: 'https://f-droid.org/packages/com.blackbox.app/',
-  githubReleasesUrl: 'https://github.com/alpha-1-design/Blackbox/releases',
+  githubReleasesUrl: 'https://github.com/alpha-1-design/BLACKBOX/releases',
 
   async check() {
     try {

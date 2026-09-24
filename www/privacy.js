@@ -42,7 +42,8 @@ const PrivacyModule = (() => {
     const results = await Promise.all(perms.map(async p => {
       try { const state = await p.check(); return {name: p.name, state}; } catch { return {name: p.name, state:'unsupported'}; }
     }));
-    toast('Audit complete');
+    const lines = results.map(r => `${r.name}: ${r.state}`).join('\n');
+    await uiAlert('Permission Audit', 'Permissions as visible to the BLACKBOX sandbox:\n\n' + lines);
   }
 
   async function queryPermission(name) {

@@ -77,6 +77,33 @@ if (fs.existsSync(genPlugins)) {
 }
 
 // ---------------------------------------------------------------------------
+section('Vault crypto smoke test (node vm + webcrypto)');
+try {
+  execFileSync(process.execPath, [path.join(__dirname, 'vault-smoke.js')], { stdio: 'inherit' });
+  ok('vault changePin/unlock/verify contract holds');
+} catch (e) {
+  fail('vault smoke test failed (see output above)');
+}
+
+// ---------------------------------------------------------------------------
+section('Integration tests (decoy isolation, backup round-trip)');
+try {
+  execFileSync(process.execPath, [path.join(__dirname, 'integration.test.js')], { stdio: 'inherit' });
+  ok('decoy isolation + encrypted backup contract holds');
+} catch (e) {
+  fail('integration tests failed (see output above)');
+}
+
+// ---------------------------------------------------------------------------
+section('UI contract tests (id references, cache, native dialogs)');
+try {
+  execFileSync(process.execPath, [path.join(__dirname, 'ui-contract.js')], { stdio: 'inherit' });
+  ok('JS↔HTML contract holds');
+} catch (e) {
+  fail('UI contract tests failed (see output above)');
+}
+
+// ---------------------------------------------------------------------------
 section('Web app: syntax + Share references');
 
 const www = path.join(ROOT, 'www');

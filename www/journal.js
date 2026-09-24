@@ -1,11 +1,13 @@
 const JournalModule = (() => {
   let _entries = [];
   let _activeCat = 'all';
+  let _editingId = null;
 
   function init() {
     document.getElementById('addEntryBtn')?.addEventListener('click', () => openForm(null));
     document.getElementById('closeJournalModal')?.addEventListener('click', closeForm);
     document.getElementById('cancelJournalBtn')?.addEventListener('click', closeForm);
+    document.getElementById('journalDelete')?.addEventListener('click', deleteEditing);
     document.getElementById('journalForm')?.addEventListener('submit', async e => { e.preventDefault(); await saveForm(); });
     document.getElementById('journalSearch')?.addEventListener('input', render);
     document.querySelectorAll('#journalPills .pill').forEach(p => {
@@ -49,32 +51,42 @@ const JournalModule = (() => {
       </div>
     `).join('');
 
+    // Tap opens the entry in the editor — no confirm() maze.
     list.querySelectorAll('.journal-item').forEach(el => {
-      el.addEventListener('click', async () => {
+      el.addEventListener('click', () => {
         const entry = _entries.find(x => x.id === el.dataset.id);
-        if (!entry) return;
-        if (confirm(`Edit "${entry.title}"?\n\nOK = Edit | Cancel = Delete`)) {
-          openForm(entry);
-        } else if (confirm('Delete this entry permanently?')) {
-          await Vault.deleteEntry(entry.id);
-          await refresh();
-        }
+        if (entry) openForm(entry);
       });
     });
   }
 
   function openForm(e) {
+    _editingId = e ? e.id : null;
     document.getElementById('journalModalTitle').textContent = e ? 'Edit Entry' : 'New Entry';
     document.getElementById('journalTitle').value = e ? e.title : '';
     document.getElementById('journalCategory').value = e ? e.category : 'personal';
     document.getElementById('journalBody').value = e ? e.body : '';
+    // Delete button only makes sense for an existing entry
+    const del = document.getElementById('journalDelete');
+    if (del) del.classList.toggle('hidden', !e);
     document.getElementById('journalModal').classList.remove('hidden');
-    document.getElementById('journalTitle').focus();
   }
 
   function closeForm() {
     document.getElementById('journalModal').classList.add('hidden');
+    _editingId = null;
     document.getElementById('journalForm').reset();
+  }
+
+  async function deleteEditing() {
+    if (!_editingId) return;
+    const entry = _entries.find(x => x.id === _editingId);
+    closeForm();
+    if (!entry) return;
+    if (await uiConfirm('Delete Entry', `Delete "${entry.title}" permanently?`, { danger: true, okLabel: 'Delete' })) {
+      await Vault.deleteEntry(entry.id);
+      await refresh();
+    }
   }
 
   async function saveForm() {
@@ -82,7 +94,7 @@ const JournalModule = (() => {
     const body = document.getElementById('journalBody').value.trim();
     const category = document.getElementById('journalCategory').value;
     if (!body) return;
-    await Vault.saveEntry({title, body, category});
+    await Vault.saveEntry({id: _editingId, title, body, category});
     closeForm();
     await refresh();
   }

@@ -1,6 +1,8 @@
-const CACHE = 'blackbox-v2';
+const CACHE = 'blackbox-v3';
 const SHELL = ['./', './index.html', './styles.css', './app.js', './vault.js',
-  './overlay.js', './shake.js', './clipboard.js',
+  './overlay.js', './shake.js', './clipboard.js', './secrets.js', './files.js', './journal.js',
+  './auth.js', './privacy.js', './updater.js', './maintenance.js',
+  './appearance.js', './cool.js', './voice.js',
   './service-worker.js', './manifest.json', './assets/icon.svg'];
 
 self.addEventListener('install', e => {

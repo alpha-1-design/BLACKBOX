@@ -96,7 +96,8 @@ const SecretsModule = (() => {
     list.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', async e => {
         e.stopPropagation();
-        if (confirm('Delete this secret?')) {
+        const s = _secrets.find(x => x.id === btn.dataset.id);
+        if (s && await uiConfirm('Delete Secret', `Delete "${s.name}" permanently?`, { danger: true, okLabel: 'Delete' })) {
           await Vault.deleteSecret(btn.dataset.id);
           await refresh();
         }

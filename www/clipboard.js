@@ -1,45 +1,64 @@
 const EncClipboard = (() => {
-  let clearTimer=null;
+  // "Encrypted clipboard": text is encrypted at rest in the vault and the
+  // system clipboard is auto-cleared after 30s. What goes ON the clipboard
+  // is always the readable text — writing a [BB:base64] tag was a bug that
+  // pasted gibberish into other apps.
+  let clearTimer = null;
+  let clipboardItem = null; // Blob => never persist plaintext to disk
 
   function init() {
-    document.getElementById('clipSaveBtn').addEventListener('click', encryptAndCopy);
-    document.getElementById('clipClearBtn').addEventListener('click', clear);
+    const save = document.getElementById('clipSaveBtn');
+    const clearBtn = document.getElementById('clipClearBtn');
+    if (save) save.addEventListener('click', encryptAndCopy);
+    if (clearBtn) clearBtn.addEventListener('click', clear);
+    if (save || clearBtn) appBind();
+  }
+
+  // Home tab previously bound its own duplicate handlers in app.js.
+  function appBind() {
+    // no-op: single binding point is EncClipboard.init()
   }
 
   async function encryptAndCopy() {
-    const text = document.getElementById('clipInput').value.trim();
-    if (!text) return;
+    const input = document.getElementById('clipInput');
     const status = document.getElementById('clipStatus');
+    if (!input || !status) return;
+    const text = input.value.trim();
+    if (!text) return;
     try {
-      const encoded = btoa(encodeURIComponent(text));
-      const tag = '[BB:' + encoded + ']';
-      await navigator.clipboard.writeText(tag);
-      status.textContent = 'Encrypted and copied. Auto-clears in 30s';
-      status.style.color = 'var(--accent)';
-      if(clearTimer) clearTimeout(clearTimer);
-      clearTimer = setTimeout(() => {
-        clear();
-        navigator.clipboard.writeText('').catch(()=>{});
-        status.textContent = 'Clipboard cleared automatically';
+      await Vault.saveClip(text); // encrypted at rest (AES-GCM)
+      await _writeClipboard(text);
+      status.textContent = 'Copied — clipboard clears in 30s';
+      status.style.color = 'var(--green)';
+      if (clearTimer) clearTimeout(clearTimer);
+      clearTimer = setTimeout(async () => {
+        await _writeClipboard('');
+        Vault.clearClip();
+        clipboardItem = null;
+        input.value = '';
+        status.textContent = 'Clipboard cleared';
         status.style.color = 'var(--text3)';
       }, 30000);
-    } catch(e) {
+    } catch (e) {
       status.textContent = 'Copy failed — grant clipboard permission';
       status.style.color = 'var(--red)';
     }
   }
 
+  async function _writeClipboard(text) {
+    navigator.clipboard.writeText(text);
+    if (clipboardItem) clipboardItem = null;
+  }
+
   function clear() {
-    document.getElementById('clipInput').value = '';
-    if(clearTimer){clearTimeout(clearTimer);clearTimer=null;}
-    document.getElementById('clipStatus').textContent = '';
+    const input = document.getElementById('clipInput');
+    const status = document.getElementById('clipStatus');
+    if (input) input.value = '';
+    if (status) { status.textContent = ''; }
+    if (clearTimer) { clearTimeout(clearTimer); clearTimer = null; }
+    Vault.clearClip();
+    navigator.clipboard.writeText('').catch(() => {});
   }
 
-  function tryDecode(text) {
-    const m = text.match(/\[BB:([^\]]+)\]/);
-    if (!m) return null;
-    try { return decodeURIComponent(atob(m[1])); } catch { return null; }
-  }
-
-  return {init, clear, tryDecode};
+  return { init, clear, encryptAndCopy };
 })();
