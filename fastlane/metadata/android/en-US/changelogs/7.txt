@@ -1,0 +1,1 @@
+Login fixed for users updating from older versions (legacy PINs migrate automatically), fingerprint unlock now works after an app restart, and updated APKs no longer show stale content on first launch. Lock screen got smoother animations.

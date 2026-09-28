@@ -50,10 +50,17 @@ const Vault = (() => {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(saltB64 + ':' + pin));
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
   }
-  /** Async compare — always await. Returns true when `pin` hashes to `hashed`. */
+  /** Async compare — always await. Returns true when `pin` hashes to `hashed`.
+   *  Also accepts the legacy plaintext verifier (pre-2.0.4) so users who
+   *  updated the app are not locked out; callers migrate the stored verifier
+   *  to a hash after a successful match (see app.js _upgradePin). */
   async function verifyPin(pin, hashed) {
     if (!hashed) return false;
-    return (await hashPin(pin)) === hashed;
+    return hashed === pin || (await hashPin(pin)) === hashed;
+  }
+  /** True when a stored verifier is a salted SHA-256 hex digest (not legacy plaintext). */
+  function isPinVerifier(hashed) {
+    return typeof hashed === 'string' && /^[0-9a-f]{64}$/.test(hashed);
   }
 
   /** Plain-PIN entry point for the active profile. */
@@ -61,17 +68,63 @@ const Vault = (() => {
     _key = await _deriveKey(pin, await _saltFor());
     try { // cache raw key for this app-process so biometric re-auth works
       const raw = await crypto.subtle.exportKey('raw', _key);
-      sessionStorage.setItem('bb_mkey', btoa(String.fromCharCode(...new Uint8Array(raw))));
+      const b64 = btoa(String.fromCharCode(...new Uint8Array(raw)));
+      sessionStorage.setItem('bb_mkey', b64);
       sessionStorage.setItem('bb_mprofile', _profile);
+      _persistKeyForBiometric(b64, _profile); // Keystore-backed so fingerprint works after process death
     } catch {}
   }
-  /** Unlock from the cached per-session key (biometric re-auth). Restores last profile. */
+
+  /* ── Biometric key persistence ──
+     sessionStorage dies with the app process, so after an Android restart
+     the fingerprint button had nothing to unlock. We mirror the raw master
+     key into Android Keystore–encrypted prefs (ShieldBiometric secureStore).
+     The key is only handed back to the UI after a successful BiometricPrompt
+     (gated in app.js _biometricUnlock). No-op in the browser. */
+  function _persistKeyForBiometric(b64, profile) {
+    try {
+      const SS = window.Capacitor?.Plugins?.ShieldBiometric;
+      if (SS?.secureStore) {
+        Promise.resolve(SS.secureStore({ key: 'bb_mkey', value: b64 })).catch(() => {});
+        if (profile) Promise.resolve(SS.secureStore({ key: 'bb_mprofile', value: profile })).catch(() => {});
+      }
+    } catch {}
+  }
+  async function _loadPersistedKey() {
+    try {
+      const SS = window.Capacitor?.Plugins?.ShieldBiometric;
+      if (!SS?.secureLoad) return null;
+      const res = await SS.secureLoad({ key: 'bb_mkey' });
+      return (res && res.value) || null;
+    } catch { return null; }
+  }
+  async function _loadPersistedProfile() {
+    try {
+      const SS = window.Capacitor?.Plugins?.ShieldBiometric;
+      if (!SS?.secureLoad) return null;
+      const res = await SS.secureLoad({ key: 'bb_mprofile' });
+      return (res && res.value) || null;
+    } catch { return null; }
+  }
+
+  /** Unlock from the cached per-session key (biometric re-auth). Falls back to
+   *  the Keystore-backed key so fingerprint unlock still works after an app
+   *  restart. Restores last profile. */
   async function unlockFromSession() {
-    const b64 = sessionStorage.getItem('bb_mkey');
+    let b64 = sessionStorage.getItem('bb_mkey');
+    let profile = sessionStorage.getItem('bb_mprofile');
+    if (!b64) { // cold start: restore the key saved by the last successful PIN unlock
+      b64 = await _loadPersistedKey();
+      if (!profile) profile = await _loadPersistedProfile();
+    }
     if (!b64) throw new Error('no session key');
-    _profile = sessionStorage.getItem('bb_mprofile') === 'decoy' ? 'decoy' : 'real';
+    _profile = profile === 'decoy' ? 'decoy' : 'real';
     const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
     _key = await crypto.subtle.importKey('raw', raw, {name:'AES-GCM'}, false, ['encrypt','decrypt']);
+    try { // restore the session copy so later in-session re-auths need no native round-trip
+      sessionStorage.setItem('bb_mkey', b64);
+      sessionStorage.setItem('bb_mprofile', _profile);
+    } catch {}
   }
 
   /** Re-encrypt every store under a new PIN (used by Change PIN). Real profile only. */
@@ -472,13 +525,21 @@ const Vault = (() => {
   function clearAll() {
     for (const name of Object.keys(STORES)) { localStorage.removeItem(STORES[name]); localStorage.removeItem('bb_d_' + name); }
     localStorage.removeItem(SK); localStorage.removeItem(DKEY); _key = null;
+    try { // wipe the Keystore-backed biometric key too
+      const SS = window.Capacitor?.Plugins?.ShieldBiometric;
+      if (SS?.secureClear) {
+        Promise.resolve(SS.secureClear({ key: 'bb_mkey' })).catch(() => {});
+        Promise.resolve(SS.secureClear({ key: 'bb_mprofile' })).catch(() => {});
+      }
+    } catch {}
+    try { sessionStorage.removeItem('bb_mkey'); sessionStorage.removeItem('bb_mprofile'); } catch {}
   }
   function formatSize(b) { return b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(1)+' MB'; }
   function relTime(ts) { const d=Date.now()-ts; return d<60000?'just now':d<3600000?Math.floor(d/60000)+'m ago':d<86400000?Math.floor(d/3600000)+'h ago':Math.floor(d/86400000)+'d ago'; }
   function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 
   return {
-    hashPin, verifyPin,
+    hashPin, verifyPin, isPinVerifier,
     unlockWithPin, unlockReal, unlockDecoy, unlockFromSession, activeProfile,
     resetDecoyVault, changePin,
     lock, isUnlocked,

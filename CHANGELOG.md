@@ -4,7 +4,16 @@ All notable changes to BLACKBOX will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [2.0.5] — 2026-09-28
+
+### Fixed
+- **Login broken after updating from ≤2.0.3** — the v2.0.4 PIN-hash change ignored existing plaintext verifiers, so every updating user was locked out with "Wrong PIN". Legacy plaintext verifiers are now accepted and silently upgraded to salted SHA-256 hashes on first successful unlock (both real and decoy PINs).
+- **Fingerprint unlock dead after app restart** — the master key only lived in `sessionStorage`, which dies with the Android app process, so biometric unlock had nothing to unlock with on a cold start. The key is now mirrored into Android Keystore–encrypted storage (`EncryptedSharedPreferences`) and only handed back after a successful `BiometricPrompt`.
+- **APK updates could serve a stale app session** — the service worker cached the document cache-first under a hand-managed cache name, so the first launch after an update was still served entirely from the previous release's cache (users saw the old hardcoded "BLACKBOX v2.0" About text and old behaviour), and any future release that didn't bump the cache name would freeze users on old assets permanently. The cache is now version-keyed per release and the document is network-first with the cache as the offline fallback, so an updated APK is live from the first launch.
+- Self-destruct now also wipes the Keystore-backed biometric key and session storage.
+
+### Improved
+- **Lock screen motion** — staggered entrance for logo, PIN dots and numpad; springy dot fill and keypress scaling; red pulse + shake on wrong PIN; a vault-door fade-out transition into the app reveal; fingerprint button with icon and pulse on unlock.
 
 ## [2.0.4]
 

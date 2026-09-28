@@ -2,11 +2,13 @@ const PIN_KEY = 'bb_pin';
 const DECOY_KEY = 'bb_decoy';
 const SETT_KEY = 'bb_settings';
 
-let PIN = localStorage.getItem(PIN_KEY) || null; // SHA-256 hex verifier
-let DECOY_PIN = localStorage.getItem(DECOY_KEY) || ''; // SHA-256 hex verifier
+let PIN = localStorage.getItem(PIN_KEY) || null; // salted SHA-256 verifier (or legacy plaintext, migrated on first unlock)
+let DECOY_PIN = localStorage.getItem(DECOY_KEY) || ''; // same, for the decoy profile
 let digits = [];
 let activeTab = 'home';
 let _setupActive = false;
+let _bioReady = false; // a persisted master key exists → fingerprint can unlock
+let _animLock = false; // re-lock while the unlock animation is playing
 let failCount = 0;
 let lockoutEnd = 0;
 let lockoutInterval = null;
@@ -152,8 +154,12 @@ function _initBiometric() {
     if (!window.Capacitor?.Plugins?.ShieldBiometric) return;
     try {
       const res = await window.Capacitor.Plugins.ShieldBiometric.isAvailable();
+      // Only offer the button when a key from a previous successful unlock is
+      // actually stored — otherwise tapping it can never work.
       if (res.available) {
-        document.getElementById('biometricBtn').style.display = 'block';
+        const persisted = await window.Capacitor.Plugins.ShieldBiometric.hasPersistedKey();
+        _bioReady = !!(persisted && persisted.hasKey);
+        if (_bioReady) document.getElementById('biometricBtn').style.display = 'flex';
       }
     } catch {}
   }
@@ -208,6 +214,7 @@ function _showSetupPinModal() {
       PIN = await Vault.hashPin(firstPin);
       localStorage.setItem(PIN_KEY, PIN);
       await Vault.unlockWithPin(firstPin); // derive master key immediately
+      _bioReady = true; // key persisted → fingerprint unlock available
       _setupActive = false;
       confirmModal.classList.add('hidden');
       if (window.Capacitor?.Plugins?.ShieldBiometric) {
@@ -234,7 +241,13 @@ async function _biometricUnlock() {
     const res = await window.Capacitor.Plugins.ShieldBiometric.authenticate({ title: 'Unlock BLACKBOX' });
     if (res.success) {
       failCount = 0;
-      await Vault.unlockFromSession();
+      try {
+        await Vault.unlockFromSession(); // session key, or Keystore-backed key after a restart
+      } catch {
+        // No stored key (e.g. web / first run) — the fingerprint prompt succeeded
+        // but there is nothing to unlock with. Fall back to the PIN pad.
+        return;
+      }
       _showApp();
     }
   } catch (e) { console.error('Biometric error:', e); }
@@ -265,19 +278,44 @@ async function _checkPin() {
   digits = [];
   _renderDots();
 
-  if (DECOY_PIN && await Vault.verifyPin(entered, DECOY_PIN)) { _triggerPanic(); return; }
+  if (DECOY_PIN && await Vault.verifyPin(entered, DECOY_PIN)) {
+    if (!Vault.isPinVerifier(DECOY_PIN)) { // migrate legacy plaintext decoy verifier too
+      DECOY_PIN = await Vault.hashPin(entered);
+      localStorage.setItem(DECOY_KEY, DECOY_PIN);
+    }
+    _triggerPanic();
+    return;
+  }
   if (PIN && await Vault.verifyPin(entered, PIN)) {
     failCount = 0;
+    // ── Legacy migration (pre-2.0.4 installs): the stored verifier was the
+    // plaintext PIN. Accept it, then replace it with a salted hash so it is
+    // never persisted again. Data itself was always AES-encrypted with a key
+    // derived from the PIN, so the same digits still decrypt everything.
+    if (!Vault.isPinVerifier(PIN)) {
+      PIN = await Vault.hashPin(entered);
+      localStorage.setItem(PIN_KEY, PIN);
+    }
+    // (A legacy plaintext decoy verifier is not migrated here — we only have
+    // the real digits. It keeps working and upgrades if the decoy PIN is
+    // entered; see the decoy branch above.)
     try { await Vault.unlockWithPin(entered); } catch {}
+    _bioReady = true; // key is persisted → fingerprint can unlock from now on
+    const bioBtn = document.getElementById('biometricBtn');
+    if (bioBtn && window.Capacitor?.Plugins?.ShieldBiometric) bioBtn.style.display = 'flex';
     _showApp();
   } else {
     failCount++;
     document.getElementById('lockAttemptInfo').textContent = `Attempt ${failCount}/5`;
     const errEl = document.getElementById('pinError');
     errEl.textContent = 'Wrong PIN';
-    document.querySelector('.lock-content')?.classList.add('shake');
+    const dots = document.querySelectorAll('.pin-display .pin-dot');
+    const content = document.querySelector('.lock-content');
+    dots.forEach(d => { d.classList.add('error'); });
+    content?.classList.add('shake');
     setTimeout(() => {
-      document.querySelector('.lock-content')?.classList.remove('shake');
+      content?.classList.remove('shake');
+      dots.forEach(d => { d.classList.remove('error', 'filled'); });
       errEl.textContent = '';
     }, 450);
 
@@ -310,29 +348,49 @@ function _startLockout() {
 function _isLockedOut() { return lockoutEnd > Date.now(); }
 
 function _selfDestruct() {
-  Vault.clearAll();
+  Vault.clearAll(); // also wipes the Keystore-backed biometric key
   localStorage.clear();
+  try { sessionStorage.clear(); } catch {}
   document.getElementById('pinError').textContent = 'VAULT WIPED';
   document.getElementById('lockAttemptInfo').textContent = 'All data destroyed';
   setTimeout(() => location.reload(), 2000);
 }
 
 function _showApp() {
-  document.getElementById('lockScreen').classList.remove('active');
-  document.getElementById('mainApp').classList.remove('hidden');
+  const lock = document.getElementById('lockScreen');
+  const app = document.getElementById('mainApp');
+  document.getElementById('pinError').textContent = '';
+  document.getElementById('lockAttemptInfo').textContent = '';
+  document.getElementById('biometricBtn')?.classList.add('unlocking');
+  lock.classList.add('unlocking'); // fade+scale the vault door away
+  _animLock = true;
   document.getElementById('panicOverlay').classList.add('hidden');
+  setTimeout(() => {
+    lock.classList.remove('active', 'unlocking');
+    document.getElementById('biometricBtn')?.classList.remove('unlocking');
+    app.classList.remove('hidden');
+    app.classList.add('entering');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      app.classList.remove('entering');
+      _animLock = false;
+    }));
+  }, 380);
   _resetAutoLock();
   _refreshAll();
 }
 
 function _lockApp() {
+  if (_animLock) return; // don't fight the unlock transition
   if (!Vault.isUnlocked() && document.getElementById('lockScreen').classList.contains('active')) return;
   Vault.lock();
   AuthModule.stopTimers();
-  document.getElementById('lockScreen').classList.add('active');
+  const lock = document.getElementById('lockScreen');
+  lock.classList.remove('unlocking');
+  lock.classList.add('active');
   document.getElementById('mainApp').classList.add('hidden');
   digits = [];
   _renderDots();
+  document.querySelectorAll('.pin-display .pin-dot').forEach(d => d.classList.remove('error'));
   document.getElementById('pinError').textContent = '';
   _clearAutoLock();
   if (PrivacyOverlay.isEnabled()) PrivacyOverlay.disable();

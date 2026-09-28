@@ -47,6 +47,13 @@ function check(cond, msg) { console.log(`  ${cond ? '\u2713' : '\u2717'} ${msg}`
   check(await Vault.verifyPin('1234', h), 'verifyPin accepts the right PIN');
   check(!(await Vault.verifyPin('9999', h)), 'verifyPin rejects a wrong PIN');
 
+  // 1b. Legacy plaintext verifiers (pre-2.0.4 installs) must still unlock —
+  // the v2.0.4 hash change locked updating users out. Verify + migrate.
+  check(await Vault.verifyPin('4321', '4321'), 'verifyPin accepts a legacy plaintext verifier');
+  check(!(await Vault.verifyPin('0000', '4321')), 'verifyPin rejects the wrong legacy plaintext');
+  check(!Vault.isPinVerifier('4321'), 'isPinVerifier flags plaintext as legacy');
+  check(Vault.isPinVerifier(h), 'isPinVerifier accepts a salted hash');
+
   // 2. Seed data under PIN A
   await Vault.unlockWithPin('1111');
   await Vault.saveSecret({ name: 'OpenAI', value: 'sk-super-secret', category: 'api', notes: 'prod key' });

@@ -5,6 +5,9 @@ on:
     branches: [ main ]
     tags: [ 'v*' ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -52,3 +55,16 @@ jobs:
         with:
           name: BLACKBOX-release
           path: android/app/build/outputs/apk/release/app-release.apk
+
+      # Tag pushes become a GitHub release with the asset named exactly as the
+      # F-Droid recipe's Binaries URL expects: BLACKBOX-v<ver>-release.apk
+      - name: Rename APK for release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: cp android/app/build/outputs/apk/release/app-release.apk "BLACKBOX-${{ github.ref_name }}-release.apk"
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: BLACKBOX-${{ github.ref_name }}-release.apk
+          generate_release_notes: true

@@ -5,11 +5,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Android](https://img.shields.io/badge/Android-Native-green.svg)](https://developer.android.com)
 [![AES-256](https://img.shields.io/badge/Encryption-AES--256--GCM-emerald.svg)](https://csrc.nist.gov/publications/detail/fips/197/final)
-[![F-Droid](https://img.shields.io/badge/F--Droid-Ready-green.svg)](https://f-droid.org)
+[![F-Droid](https://img.shields.io/badge/F--Droid-Ready-green.svg)](https://f-droid.org/packages/com.blackbox.app/)
 
 **BLACKBOX** is an offline, security-first hub for developers and creators. Featuring an encrypted secrets manager, private journal, 2FA authenticator, and comprehensive privacy tools, BLACKBOX ensures 100% on-device processing and zero cloud exposure.
 
-[Report Bug](https://github.com/alpha-1-design/Blackbox/issues) · [Contributing](./CONTRIBUTING.md)
+[Report Bug](https://github.com/alpha-1-design/BLACKBOX/issues) · [Install from F-Droid](https://f-droid.org/packages/com.blackbox.app/) · [Contributing](./CONTRIBUTING.md)
 
 <div align="center">
   <img src="assets/screenshot1.jpg" width="45%" />

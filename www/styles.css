@@ -19,6 +19,24 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 /* LOCK SCREEN */
 .lock-screen{position:fixed;inset:0;z-index:1000;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
 .lock-screen.active{display:flex}
+.lock-screen.active .lock-content{animation:lockIn 0.5s cubic-bezier(0.22,1,0.36,1) both}
+.lock-screen.active .app-logo{animation:logoRise 0.55s cubic-bezier(0.22,1,0.36,1) both}
+.lock-screen.active .logo-wordmark{animation:logoRise 0.55s 0.05s cubic-bezier(0.22,1,0.36,1) both}
+.lock-screen.active .lock-status-row{animation:logoRise 0.55s 0.1s cubic-bezier(0.22,1,0.36,1) both}
+.lock-screen.active .pin-display{animation:logoRise 0.55s 0.14s cubic-bezier(0.22,1,0.36,1) both}
+.lock-screen.active .numpad{animation:logoRise 0.6s 0.18s cubic-bezier(0.22,1,0.36,1) both}
+.lock-screen.active .lock-bottom-row{animation:logoRise 0.6s 0.26s cubic-bezier(0.22,1,0.36,1) both}
+@keyframes lockIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes logoRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+/* Unlock transition — the vault door swings open */
+.lock-screen.unlocking{pointer-events:none}
+.lock-screen.unlocking .lock-content{animation:vaultOut 0.4s cubic-bezier(0.4,0,1,1) forwards}
+.lock-screen.unlocking .lock-canvas{animation:fadeIn 0.4s ease forwards;opacity:1}
+@keyframes vaultOut{to{opacity:0;transform:scale(0.92) translateY(-14px);filter:blur(6px)}}
+@keyframes fadeIn{to{opacity:1}}
+/* App reveal — rises up from under the vault door */
+.main-app.entering{animation:appIn 0.42s cubic-bezier(0.22,1,0.36,1) both}
+@keyframes appIn{from{opacity:0;transform:scale(1.03)}to{opacity:1;transform:scale(1)}}
 .lock-canvas{position:absolute;inset:0;pointer-events:none;opacity:0}
 .lock-content{position:relative;display:flex;flex-direction:column;align-items:center;gap:1.2rem;width:100%;max-width:280px}
 .app-logo{display:flex;align-items:center;justify-content:center;margin-bottom:0.5rem}
@@ -28,18 +46,24 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .lock-badge{font-family:var(--mono);font-size:0.6rem;color:var(--text3);letter-spacing:0.08em}
 .lock-attempt-info{font-family:var(--mono);font-size:0.6rem;color:var(--red)}
 .pin-display{display:flex;gap:16px;margin:0.5rem 0}
-.pin-dot{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--border2);transition:all 0.15s var(--ease)}
-.pin-dot.filled{background:var(--accent);border-color:var(--accent)}
+.pin-dot{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--border2);transition:background 0.15s var(--ease),border-color 0.15s var(--ease),transform 0.18s cubic-bezier(0.34,1.56,0.64,1)}
+.pin-dot.filled{background:var(--accent);border-color:var(--accent);transform:scale(1.25)}
+.pin-dot.filled:active{transform:scale(1.1)}
+.pin-dot.error{background:var(--red);border-color:var(--red);animation:dotPulse 0.45s ease}
+@keyframes dotPulse{0%,100%{transform:scale(1.25)}50%{transform:scale(0.85)}}
 .pin-error{font-family:var(--mono);font-size:0.7rem;color:var(--red);min-height:16px;letter-spacing:0.02em}
 .lockout-timer{font-family:var(--mono);font-size:0.8rem;color:var(--yellow);text-align:center;padding:0.5rem 0.8rem;background:var(--yellow-dim);border-radius:var(--rs);width:100%}
 .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
-.num-key{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-family:var(--font);font-size:1.25rem;font-weight:500;padding:0.9rem;cursor:pointer;transition:all 0.12s var(--ease);-webkit-tap-highlight-color:transparent}
-.num-key:active{background:var(--bg2);transform:scale(0.96)}
+.num-key{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-family:var(--font);font-size:1.25rem;font-weight:500;padding:0.9rem;cursor:pointer;transition:transform 0.12s cubic-bezier(0.34,1.56,0.64,1),background 0.12s var(--ease);-webkit-tap-highlight-color:transparent}
+.num-key:active{background:var(--bg2);transform:scale(0.92)}
 .del-key{font-size:0.95rem;color:var(--text2)}
 .decoy-key{font-size:0.55rem;font-family:var(--mono);letter-spacing:0.08em;color:var(--text3);text-transform:uppercase}
 .lock-bottom-row{width:100%;display:flex;justify-content:center;margin-top:0.3rem}
-.lock-bio-btn{background:none;border:1px solid var(--border);border-radius:var(--rs);color:var(--text3);font-family:var(--font);font-size:0.75rem;padding:0.45rem 1rem;cursor:pointer;transition:all 0.2s}
+.lock-bio-btn{display:none;background:none;border:1px solid var(--border);border-radius:var(--rs);color:var(--text3);font-family:var(--font);font-size:0.75rem;padding:0.45rem 1rem;cursor:pointer;transition:color 0.2s,border-color 0.2s,opacity 0.3s;-webkit-tap-highlight-color:transparent;align-items:center;gap:6px}
+.lock-bio-btn svg{width:14px;height:14px}
 .lock-bio-btn:active{color:var(--accent);border-color:var(--border2)}
+.lock-bio-btn.unlocking{animation:bioPulse 0.4s ease}
+@keyframes bioPulse{0%{transform:scale(1)}40%{transform:scale(0.94);opacity:0.5}100%{transform:scale(1)}}
 
 /* PANIC CALCULATOR */
 .panic-overlay{position:fixed;inset:0;z-index:900;background:#f2f2f7;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2rem}
