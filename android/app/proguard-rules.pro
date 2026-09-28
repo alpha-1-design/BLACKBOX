@@ -19,3 +19,11 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# androidx.security:security-crypto pulls in Tink, whose optional
+# error-prone annotations aren't needed at runtime (Google's documented fix).
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn javax.annotation.**
+
+# Keep the Capacitor plugin bridge: JS calls these @PluginMethod entries by name.
+-keep class com.blackbox.app.ShieldBiometricPlugin { *; }
