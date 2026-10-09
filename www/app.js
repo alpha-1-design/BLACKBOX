@@ -203,7 +203,11 @@ function _showSetupPinModal() {
     firstPin = setupDigits.join('');
     setTimeout(() => {
       modal.classList.add('hidden');
-      confirmDigits = [];
+      // Clear IN PLACE. Reassigning (confirmDigits = []) would swap in a new
+      // array while bindKeys' closure keeps pushing into the original one —
+      // the confirm check then always compared "" against firstPin ("don't
+      // match" on every attempt) and after 4 stale digits the pad went dead.
+      confirmDigits.length = 0;
       updateDots(confirmDots, confirmDigits);
       confirmModal.classList.remove('hidden');
     }, 180);
@@ -228,7 +232,7 @@ function _showSetupPinModal() {
     } else {
       const errEl = document.getElementById('confirmError');
       if (errEl) errEl.textContent = "PINs don't match — try again";
-      confirmDigits = [];
+      confirmDigits.length = 0; // in place — see note above; keeps the pad live
       updateDots(confirmDots, confirmDigits);
       setTimeout(() => { if (errEl) errEl.textContent = ''; }, 2000);
     }
@@ -377,6 +381,7 @@ function _showApp() {
   }, 380);
   _resetAutoLock();
   _refreshAll();
+  _notifyIfUpdate();
 }
 
 function _lockApp() {
@@ -557,6 +562,7 @@ function _initSettings() {
     e.target.value = '';
   });
   document.getElementById('websiteBtn')?.addEventListener('click', () => window.open('https://alpha1studio.vercel.app', '_blank'));
+  document.getElementById('featureReqBtn')?.addEventListener('click', _requestFeature);
   document.getElementById('githubBtn')?.addEventListener('click', () => window.open('https://github.com/alpha-1-design/BLACKBOX', '_blank'));
   document.getElementById('faqBtn')?.addEventListener('click', _showFaq);
   document.getElementById('privacyPolicyBtn')?.addEventListener('click', _showPrivacyPolicy);
@@ -652,6 +658,46 @@ Full policy: github.com/alpha-1-design/BLACKBOX/blob/main/SECURITY.md`;
   await uiAlert('Privacy Policy', pp);
 }
 
+/* ── REQUEST A FEATURE — opens the user's mail app, pre-filled ── */
+const FEATURE_EMAIL = 'alpha1.design.dev@gmail.com';
+async function _requestFeature() {
+  const idea = await uiPrompt('Request a Feature', 'What should we build next?', { type: 'text' });
+  if (idea === null) return; // cancelled
+  const body = idea.trim() ? idea.trim() : '(describe your idea)';
+  const mailto = 'mailto:' + FEATURE_EMAIL
+    + '?subject=' + encodeURIComponent('[Feature] BLACKBOX v' + Updater.currentVersion)
+    + '&body=' + encodeURIComponent(body + '\n\n---\nSent from BLACKBOX v' + Updater.currentVersion);
+  try {
+    window.open(mailto, '_system');
+  } catch {
+    await uiAlert('Request a Feature', 'No email app found. You can reach us at ' + FEATURE_EMAIL);
+  }
+}
+
+/* ── UPDATE NOTIFICATION ──
+   Runs once shortly after the vault unlocks. Notifies the user when a newer
+   release exists, instead of making them discover it under Settings. */
+let _updateNotified = false;
+function _notifyIfUpdate() {
+  if (_updateNotified) return;
+  _updateNotified = true;
+  setTimeout(async () => {
+    const result = await Updater.check();
+    // Silent on error — no network is the normal case offline, not news.
+    if (result && result.updateAvailable) _markUpdateAvailable(result);
+  }, 8000);
+}
+
+function _markUpdateAvailable(result) {
+  const txt = document.getElementById('updateText');
+  const sub = document.getElementById('updateSub');
+  if (txt) { txt.textContent = 'Update v' + result.latestVersion + ' Available'; txt.style.color = 'var(--accent)'; }
+  if (sub) sub.textContent = 'Tap to update';
+  const el = document.getElementById('updateStatus');
+  if (el) el._updateData = result;
+  _toast('Update v' + result.latestVersion + ' available — Settings › Update', 'green');
+}
+
 /* ── UPDATES ── */
 async function _checkUpdate() {
   const el = document.getElementById('updateText');
@@ -665,9 +711,7 @@ async function _checkUpdate() {
     return;
   }
   if (result.updateAvailable) {
-    el.textContent = 'Update v' + result.latestVersion + ' Available';
-    sub.textContent = 'Tap for update options';
-    el.parentElement._updateData = result;
+    _markUpdateAvailable(result);
   } else {
     el.textContent = 'BLACKBOX v' + Updater.currentVersion;
     sub.textContent = 'You are up to date';

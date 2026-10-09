@@ -11,6 +11,13 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+  <!-- Required for the voice-note recorder. Capacitor's WebView asks for
+       AUDIO_CAPTURE by launching RECORD_AUDIO + MODIFY_AUDIO_SETTINGS; without
+       these declared here the launch is auto-denied, so getUserMedia() failed
+       silently and the mic permission dialog never appeared. -->
+  <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+
   <uses-feature android:name="android.hardware.biometric" android:required="false"/>
 
   <application

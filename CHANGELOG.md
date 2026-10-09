@@ -4,6 +4,17 @@ All notable changes to BLACKBOX will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.6] — 2026-10-09
+
+### Fixed
+- **First-run PIN setup always said "PINs don't match"** (issues #3, #4) — the confirm step reassigned `confirmDigits` to a fresh array while the keypad closure kept pushing into the original one, so the comparison was always `"" === firstPin` and the pad went dead after the first attempt. Digits are now cleared in place, so re-entering the same PIN succeeds and the dots track every tap.
+- **Microphone permission dialog never appeared** — `RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS` were missing from `AndroidManifest.xml`, so the WebView's `AUDIO_CAPTURE` request was auto-denied before Android could show a prompt. Declared both; voice notes now trigger the normal system mic permission flow.
+- **Fingerprint/PIN rejected after the 2.0.4 update** (issue #3) — covered by the 2.0.5 legacy-verifier migration and Keystore-backed biometric key; 2.0.6 keeps that path and fixes the remaining first-run setup blocker.
+
+### Added
+- **Update notification** — the app now checks for a new release shortly after unlock and shows a notification when one is available, instead of only when you tap "Check for Updates".
+- **Request a feature** — new row in Settings that opens a pre-filled email so you can send ideas straight to the developer.
+
 ## [2.0.5] — 2026-09-28
 
 ### Fixed
