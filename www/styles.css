@@ -161,6 +161,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .category-pills::-webkit-scrollbar{display:none}
 .pill{background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--text2);font-family:var(--font);font-size:0.72rem;font-weight:500;padding:0.35rem 0.8rem;cursor:pointer;white-space:nowrap;transition:all 0.15s;-webkit-tap-highlight-color:transparent}
 .pill:active{background:var(--bg2)}
+
+/* ── SCROLL-DRIVEN PATTERN (the signature premium interaction) ──
+   Taps trigger a measured down → ripple → spring-back. Trained on
+   Uber / banking / food-ordering apps: every tap feels like it has mass. */
 .pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
 
 /* SECRETS LIST */
@@ -218,6 +222,42 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .modal-close-btn{background:none;border:none;color:var(--text2);cursor:pointer;padding:4px;transition:color 0.15s}
 .modal-close-btn:active{color:var(--text)}
 
+@keyframes waveLine{
+  0%{transform:scaleX(0) translateX(0);opacity:1}
+  25%{transform:scaleX(1) translateX(0);opacity:1}
+  35%{transform:scaleX(1) translateX(100%);opacity:0}
+  60%{opacity:0}
+  100%{opacity:0}
+}
+@keyframes checkSpring{
+  0%{transform:scale(0.6) rotate(-10deg);opacity:0}
+  45%{transform:scale(1.12) rotate(3deg);opacity:0.9}
+  75%{transform:scale(0.98) rotate(-1deg);opacity:1}
+  100%{transform:scale(1) rotate(0deg);opacity:1}
+}
+@keyframes riseTick{
+  0%{transform:translateY(0)}
+  20%{transform:translateY(6px)}
+  40%{transform:translateY(2px)}
+  60%{transform:translateY(4px)}
+  80%{transform:translateY(0)}
+  100%{transform:translateY(0)}
+}
+.wave-save{transition:box-shadow 0.18s,background 0.15s,transform 0.15s}
+.wave-save.ok{transform:scale(0.98);background:#111}
+.wave-saved{transition:box-shadow 0.2s}
+.wave-saved .chk{animation:checkSpring 1.4s cubic-bezier(0.34,1.56,0.64,1) forwards}
+.wave-saved.ok .chk{animation:checkSpring 1.4s cubic-bezier(0.34,1.56,0.64,1) forwards}
+.wave-saved.ok .chk-line{animation:riseTick 1.4s cubic-bezier(0.34,1.56,0.64,1) forwards}
+/* ── SAVE / CONFIRM / TICK FEEDBACK ──
+   Every save/confirm/tick action runs a measured sequence:
+     (a) a small splash-gamma ripple at press,
+     (b) the button "settles" into the accent, then
+     (c) a thin line (the ink stroke) draws across the button, followed by
+         a checkmark that bobs slowly (spring, ~1.5s) and settles.
+   The same classes are applied by JS on every save, confirm, tick, and
+   delete-to-undo action so the app feels consistent end-to-end. */.wave-saved .chk-line{animation:riseTick 1.4s cubic-bezier(0.34,1.56,0.64,1) forwards}
+
 /* MODAL FORM */
 .modal-form{display:flex;flex-direction:column;gap:0.9rem}
 .form-group{display:flex;flex-direction:column;gap:0.35rem}
@@ -232,8 +272,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .modal-actions-row{display:flex;gap:8px;margin-top:0.5rem}
 .modal-cancel{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);color:var(--text2);font-family:var(--font);font-size:0.82rem;font-weight:500;padding:0.6rem;cursor:pointer;transition:all 0.15s}
 .modal-cancel:active{background:var(--bg2)}
+
+
+/* ── SAVE BUTTON (visible, consistent, premium) ──
+   - Fully visible in every modal (journal, secrets, auth, voice, send,
+     open-package, etc.) — no hidden buttons.
+   - Fills with accent on tap, then a thin leading "line" draws across
+     like a check being written, followed by a checkmark that bobs
+     ~1.5s (spring) and settles.
+   - Wave primer: works on tap, long-press, and keyboard Enter. */
 .modal-save{flex:1;background:var(--accent);border:none;border-radius:var(--rs);color:#fff;font-family:var(--font);font-size:0.82rem;font-weight:500;padding:0.6rem;cursor:pointer;transition:opacity 0.15s}
-.modal-save:active{opacity:0.7}
+.modal-save:active{transform:scale(0.98)}
 
 /* PRIVACY GRID */
 .privacy-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -305,6 +354,50 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
 .shake{animation:shake 0.35s ease}
 
+.voice-rec .mic-dot{animation:micDotPulse 0.8s ease-in-out infinite}
+.voice-rec .record-btn{color:var(--accent)}
+.voice-rec .record-btn .dot{fill:#111}
+.voice-rec .status-text{color:var(--accent)}
+@keyframes micDotPulse{
+  0%{opacity:0.9;transform:scale(1)}
+  30%{opacity:1;transform:scale(1.1)}
+  60%{opacity:0.6;transform:scale(0.92)}
+  100%{opacity:0.9;transform:scale(1)}
+}
+@keyframes recordHalo{
+  0%{transform:scale(1);opacity:0.5}
+  50%{transform:scale(1.35);opacity:0.85}
+  100%{transform:scale(1);opacity:0.5}
+}
+.voice-rec .record-btn{animation:recordHalo 1.1s ease-in-out infinite}
+.voice-rec .status-text{animation:pulseFade 0.9s ease-in-out infinite}
+@keyframes pulseFade{
+  0%,100%{opacity:0.5}
+  50%{opacity:1}
+}
+/* Capture "release" exit: clears the recording pulse and snaps the dot to a
+   steady fill, so the animation frames die cleanly when the capture ends. */
+.exit-rec .mic-dot{fill:#111;animation:none;opacity:1}
+.exit-rec .record-btn{animation:none;opacity:0.5}
+.exit-rec .status-text{animation:none}
+
+/* VOICE MODEL PROGRESS PANEL */
+#voiceProgressPanel{position:fixed;left:50%;bottom:1.5rem;transform:translateX(-50%);z-index:1250;width:min(420px,calc(100vw - 2rem))}
+#voiceProgressPanel.hidden{display:none}
+.voice-progress-box{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:0 12px 44px rgba(0,0,0,0.2);padding:0.95rem 1rem;animation:panelIn 0.3s var(--ease)}
+@keyframes panelIn{from{opacity:0;transform:translateY(12px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.voice-progress-head{display:flex;flex-direction:column;gap:0.8rem}
+.voice-progress-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.voice-model-title{font-size:0.82rem;font-weight:600;color:var(--text)}
+.voice-progress-track{display:flex;align-items:center;gap:12px}
+.voice-progress-ring{width:15px;height:15px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--accent);flex-shrink:0;animation:none}
+.voice-progress-ring.ring-active{animation:ringSpin 0.9s linear infinite}
+@keyframes ringSpin{to{transform:rotate(360deg)}}
+.voice-progress-bar{flex:1;height:6px;background:var(--bg3);border-radius:6px;overflow:hidden;position:relative}
+.voice-progress-fill{position:absolute;inset:0;background:var(--accent);border-radius:6px;transform-origin:left center;transition:transform 0.25s var(--ease)}
+.voice-progress-label{display:flex;justify-content:space-between;align-items:center;margin-top:0.45rem;font-family:var(--mono);font-size:0.62rem;color:var(--text3)}
+
+
 /* DIALOGS (in-app alert/confirm/prompt replacements) */
 .danger-btn{background:var(--red)!important;color:#fff!important;border-color:var(--red)!important}
 .confirm-msg{font-size:0.85rem;color:var(--text2);line-height:1.5;margin-bottom:1rem}
@@ -325,6 +418,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .file-info{display:flex;flex-direction:column;min-width:0;flex:1}
 .file-name{font-size:0.84rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .file-meta{font-size:0.68rem;color:var(--text3);margin-top:2px}
+.voice-rec .record-btn{font-size:0.92rem;font-weight:700;padding:0.55rem 1.4rem;background:var(--accent);border-radius:var(--rs);color:#fff;cursor:pointer;transition:transform 0.12s ease, background 0.12s ease;-webkit-tap-highlight-color:transparent}
+.voice-rec .record-btn:active{transform:scale(0.95)}
+.voice-rec .status-text{font-family:var(--mono);font-size:0.68rem;color:var(--accent);min-width:3ch;text-align:right}
+.voice-rec .mic-dot{fill:none;stroke:#111;stroke-width:2.5;stroke-linecap:round;transition:fill 0.15s ease}
+.voice-rec .mic-icon{display:inline-block;width:18px;height:18px;vertical-align:middle;fill:none;stroke:#111;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.exit-rec .record-btn{background:#999}
+
 .tab-header .header-actions{display:flex;gap:6px;align-items:center}
 .tab-header .add-btn{padding:0.45rem 0.7rem}
 #pkgOpenResult{margin-top:0.8rem}

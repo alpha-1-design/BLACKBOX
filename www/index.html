@@ -840,5 +840,27 @@ if ('serviceWorker' in navigator) {
 }
 // Calculator logic lives in app.js (_calcInput) — the decoy keypad is bound there.
 </script>
+   <div id="voiceProgressPanel" class="hidden">
+      <div class="voice-progress-box">
+        <div class="voice-progress-head">
+          <div class="voice-progress-title-row">
+            <span id="voiceModelTitle" class="voice-model-title">Download speech model</span>
+            <button type="button" class="modal-close-btn" id="voiceModelCancel">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="voice-progress-track">
+            <div id="voiceModelRing" class="voice-progress-ring"></div>
+            <div class="voice-progress-bar">
+              <div id="voiceModelBar" class="voice-progress-fill" style="transform: scaleX(0);"></div>
+              <div class="voice-progress-label">
+                <span id="voiceModelPct">0%</span>
+                <span id="voiceModelSub"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 </body>
 </html>

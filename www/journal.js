@@ -5,8 +5,8 @@ const JournalModule = (() => {
 
   function init() {
     document.getElementById('addEntryBtn')?.addEventListener('click', () => openForm(null));
-    document.getElementById('closeJournalModal')?.addEventListener('click', closeForm);
-    document.getElementById('cancelJournalBtn')?.addEventListener('click', closeForm);
+    document.getElementById('closeJournalModal')?.addEventListener('click', () => closeForm(false));
+    document.getElementById('cancelJournalBtn')?.addEventListener('click', () => closeForm(false));
     document.getElementById('journalDelete')?.addEventListener('click', deleteEditing);
     document.getElementById('journalForm')?.addEventListener('submit', async e => { e.preventDefault(); await saveForm(); });
     document.getElementById('journalSearch')?.addEventListener('input', render);
@@ -18,7 +18,7 @@ const JournalModule = (() => {
         render();
       });
     });
-    document.querySelector('#journalModal .modal-backdrop')?.addEventListener('click', closeForm);
+    document.querySelector('#journalModal .modal-backdrop')?.addEventListener('click', () => closeForm(false));
   }
 
   async function refresh() {
@@ -72,10 +72,14 @@ const JournalModule = (() => {
     document.getElementById('journalModal').classList.remove('hidden');
   }
 
-  function closeForm() {
-    document.getElementById('journalModal').classList.add('hidden');
-    _editingId = null;
-    document.getElementById('journalForm').reset();
+  function closeForm(keepData) {
+    const modal = document.getElementById('journalModal');
+    const form = document.getElementById('journalForm');
+    if (!keepData) {
+      form.reset();
+      _editingId = null;
+    }
+    modal.classList.add('hidden');
   }
 
   async function deleteEditing() {
@@ -93,9 +97,12 @@ const JournalModule = (() => {
     const title = document.getElementById('journalTitle').value.trim() || 'Untitled';
     const body = document.getElementById('journalBody').value.trim();
     const category = document.getElementById('journalCategory').value;
-    if (!body) return;
+    if (!body) {
+      await uiAlert('Journal', 'Please write something before saving.');
+      return;
+    }
     await Vault.saveEntry({id: _editingId, title, body, category});
-    closeForm();
+    closeForm(true);
     await refresh();
   }
 

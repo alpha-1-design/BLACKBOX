@@ -6,8 +6,8 @@ const VoiceModule = (() => {
   let _mediaStream = null;
   let _recorder = null;
   let _chunks = [];
-  let _asr = null;          // cached whisper pipeline
-  let _asrLoading = null;   // promise guard
+  let _asr = null; // cached whisper pipeline
+  let _asrLoading = null; // promise guard
 
   function init() {
     document.getElementById('voiceCard')?.addEventListener('click', open);
@@ -18,11 +18,16 @@ const VoiceModule = (() => {
 
   function open() {
     document.getElementById('voiceModal').classList.remove('hidden');
+    document.getElementById('voiceProgressPanel').classList.add('hidden');
     refresh();
   }
+
   function close() {
     if (_recorder && _recorder.state === 'recording') _recorder.stop();
-    if (_mediaStream) { _mediaStream.getTracks().forEach(t => t.stop()); _mediaStream = null; }
+    if (_mediaStream) {
+      _mediaStream.getTracks().forEach(t => t.stop());
+      _mediaStream = null;
+    }
     document.getElementById('voiceModal').classList.add('hidden');
   }
 
@@ -81,8 +86,15 @@ const VoiceModule = (() => {
     }
     try {
       _mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      await uiAlert('Microphone', 'Microphone access is required to record voice notes.');
+    } catch (e) {
+      const err = e && e.name ? e.name : String(e);
+      if (err === 'NotAllowedError' || err === 'PermissionDeniedError') {
+        await uiAlert('Microphone', 'Microphone access is required to record voice notes.', { danger: true });
+      } else if (err === 'NotFoundError' || err === 'DevicesEmptyError') {
+        await uiAlert('Microphone', 'No microphone was found on this device.');
+      } else {
+        await uiAlert('Microphone', 'Could not access the microphone: ' + err);
+      }
       return;
     }
     _chunks = [];
@@ -112,53 +124,112 @@ const VoiceModule = (() => {
   }
 
   /* ── Transcription (on-device Whisper via transformers.js) ── */
-  async function _getASR() {
+  async function _getASR(opts) {
     if (_asr) return _asr;
     if (!_asrLoading) {
       _asrLoading = (async () => {
-        const mod = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
-        mod.env.allowLocalModels = false;
-        _asr = await mod.pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
-        return _asr;
+        try {
+          const mod = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+          mod.env.allowLocalModels = false;
+          const pipelineOpts = {};
+          if (opts && opts.onProgress) pipelineOpts.progress_callback = opts.onProgress;
+          _asr = await mod.pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', pipelineOpts);
+          return _asr;
+        } catch (e) {
+          _asrLoading = null;
+          throw e;
+        }
       })();
       _asrLoading.catch(() => { _asrLoading = null; });
     }
     return _asrLoading;
   }
 
-  async function _blobToFloat32(blob) {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-    try {
-      const buf = await ctx.decodeAudioData(await blob.arrayBuffer());
-      return buf.getChannelData(0);
-    } finally { ctx.close(); }
-  }
-
   async function transcribe(id) {
-    const item = document.querySelector(`.voice-item[data-id="${id}"] .voice-transcript`)
-      || document.createElement('div');
     const statusEl = document.getElementById('voiceRecStatus');
+    const progressPanel = document.getElementById('voiceProgressPanel');
+    const ringEl = document.getElementById('voiceModelRing');
+    const titleEl = document.getElementById('voiceModelTitle');
+    const cancelBtn = document.getElementById('voiceModelCancel');
+
+    const controller = new AbortController();
+    const onCancel = () => controller.abort();
+    const stopIfAborted = () => {
+      if (controller.signal.aborted) throw new DOMException('Cancelled.', 'AbortError');
+    };
+
     try {
-      statusEl.textContent = 'Loading speech model…';
-      const asr = await _getASR();
+      _setProgress(0, 'Connecting to the speech model…');
+      progressPanel.classList.remove('hidden');
+      statusEl.textContent = 'Preparing…';
+      titleEl.textContent = 'Downloading speech model';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.disabled = false;
+      cancelBtn.addEventListener('click', onCancel);
+
+      const asr = await _getASR({
+        onProgress: p => _setProgress(0.08 + p * 0.8, 'Downloading speech model…'),
+      });
+      stopIfAborted();
+
+      _setProgress(1, 'Transcribing audio…');
+      titleEl.textContent = 'Transcribing';
       statusEl.textContent = 'Transcribing…';
+      ringEl.classList.remove('ring-active');
+      await _nextFrame();
+      stopIfAborted();
+
       const blob = await Vault.getFileBlob(id);
-      const out = await asr(await _blobToFloat32(blob));
+      const audio = await _blobToFloat32(blob);
+      const out = await asr(audio);
       const text = (out && out.text ? out.text : '').trim();
       statusEl.textContent = '';
+      _hideProgress();
       if (text) {
         await Vault.setFileTranscript(id, text);
-        item.className = 'voice-transcript';
-        item.textContent = text;
-        document.querySelector(`.voice-item[data-id="${id}"] .file-info`)?.appendChild(item);
+        progressPanel.classList.add('hidden');
+        await refresh();
         toast('Transcript saved (encrypted)');
       } else {
         await uiAlert('Transcribe', 'No speech detected in this recording.');
       }
     } catch (e) {
       statusEl.textContent = '';
-      await uiAlert('Transcribe', 'Could not run the speech model. The first use downloads it (~40 MB) and needs a network connection; after that it runs offline.');
+      _hideProgress();
+      if (e && e.name === 'AbortError') {
+        toast('Cancelled');
+        await uiAlert('Transcribe', 'Transcription cancelled. Run it again when you are ready.');
+      } else {
+        await uiAlert('Transcribe', 'Could not run the speech model. Check your connection and try again.');
+      }
+    } finally {
+      cancelBtn.removeEventListener('click', onCancel);
     }
+  }
+
+  function _nextFrame() {
+    return new Promise(r => requestAnimationFrame(() => r()));
+  }
+
+  function _blobToFloat32(blob) {
+    return new Promise((resolve, reject) => {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+      const reader = new FileReader();
+      reader.onload = () => {
+        ctx.decodeAudioData(reader.result).then(buf => {
+          resolve(buf.getChannelData(0));
+        }).catch(err => {
+          reject(err);
+        }).finally(() => {
+          ctx.close();
+        });
+      };
+      reader.onerror = () => {
+        ctx.close();
+        reject(reader.error);
+      };
+      reader.readAsArrayBuffer(blob);
+    });
   }
 
   function toast(msg, type) {
@@ -169,5 +240,27 @@ const VoiceModule = (() => {
     setTimeout(() => t.remove(), 2500);
   }
 
-  return { init, refresh };
+  function _hideProgress() {
+    const p = document.getElementById('voiceProgressPanel');
+    if (p) p.classList.add('hidden');
+  }
+
+  function _setProgress(pct, sub) {
+    const el = document.getElementById('voiceProgressPanel');
+    if (!el) return;
+    const pctEl = document.getElementById('voiceModelPct');
+    const barEl = document.getElementById('voiceModelBar');
+    const ringEl = document.getElementById('voiceModelRing');
+    const subEl = document.getElementById('voiceModelSub');
+    if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+    if (barEl) barEl.style.transform = 'scaleX(' + Math.min(1, Math.max(0, pct)) + ')';
+    if (ringEl) ringEl.classList.add('ring-active');
+    if (subEl) subEl.textContent = sub || '';
+  }
+
+  // Markup contract for CI: index.html must contain voiceProgressPanel,
+  // voiceModelTitle, voiceModelCancel, voiceModelRing, voiceModelBar,
+  // voiceModelPct, voiceModelSub (the progress panel rendered above the
+  // voice list when a model download starts).
+  return { init, refresh, transcribe };
 })();
