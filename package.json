@@ -6,7 +6,7 @@
     "test": "node ci/checks.js",
     "sync": "npx cap sync android",
     "open": "npx cap open android",
-    "serve": "npx serve www -p 3000"
+    "serve": "serve www -p 3000"
   },
   "dependencies": {
     "@capacitor/android": "^5.0.0",

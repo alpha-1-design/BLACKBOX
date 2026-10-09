@@ -10,10 +10,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **First-run PIN setup always said "PINs don't match"** (issues #3, #4) — the confirm step reassigned `confirmDigits` to a fresh array while the keypad closure kept pushing into the original one, so the comparison was always `"" === firstPin` and the pad went dead after the first attempt. Digits are now cleared in place, so re-entering the same PIN succeeds and the dots track every tap.
 - **Microphone permission dialog never appeared** — `RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS` were missing from `AndroidManifest.xml`, so the WebView's `AUDIO_CAPTURE` request was auto-denied before Android could show a prompt. Declared both; voice notes now trigger the normal system mic permission flow.
 - **Fingerprint/PIN rejected after the 2.0.4 update** (issue #3) — covered by the 2.0.5 legacy-verifier migration and Keystore-backed biometric key; 2.0.6 keeps that path and fixes the remaining first-run setup blocker.
+- **Speech model + transcription library re-downloaded after every app update** — the service worker's activate step deleted *every* cache that wasn't the current shell, including transformers.js's own `transformers-cache` and the cached library bundle, so each release forced a ~40 MB re-download and made the first post-update transcription need a connection. The purge is now scoped: stale shell caches still go on every release, while the version-pinned library lives in a new release-independent cache and the model cache is spared — transcription works offline even immediately after updating.
+- **"Cancel" didn't cancel the model download** — transformers.js v2 exposes no AbortSignal (upstream #1182), so the voice modal now messages the service worker to fail in-flight CDN transfers on the spot and tear down their response bodies; the panel stops immediately and a cancelled run's result is discarded, never saved.
+- **Transcription progress showed the wrong percentage** — progress callbacks deliver `{progress, …}` objects (0–100) but were multiplied as 0–1 fractions, so the bar read "1%" or "NaN%". Progress is now normalized and the panel discloses the download honestly ("first time only · ~40 MB").
+- **Edits and favorites moved journal entries to "today"** — saving an edited entry always stamped `Date.now()`; the original timestamp is now preserved so a diary entry never jumps to the present.
+- **"Zero servers" now discloses the one-time model download** — new FAQ answer and Privacy Policy bullet explain the ~40 MB on-device model fetch (weights only; audio and transcripts never leave the device).
 
 ### Added
 - **Update notification** — the app now checks for a new release shortly after unlock and shows a notification when one is available, instead of only when you tap "Check for Updates".
 - **Request a feature** — new row in Settings that opens a pre-filled email so you can send ideas straight to the developer.
+- **Password Generator** — cryptographically random passwords (rejection-sampled `getRandomValues`, guaranteed character-class coverage, secure shuffle) with a live entropy readout, length 8–64 and per-class toggles; reachable from Home and directly inside the secret form ("Generate a strong password" → "Use in secret").
+- **Vault Health** — an offline audit that scores every entry 0–100 for strength (embedded dictionary, patterns, length, variety) and reuse, lists each issue with a jump-to-entry shortcut, and keeps a live score line on Home. No network involved.
+- **Journal upgrade** — read-first entry view, calendar with mood-tinted days, day filter, entry stats, moods, tags, templates, writing prompts, favorites, per-entry photo attachments and .txt export.
+- **Photo gallery & full-screen viewer** — list/gallery toggle for encrypted files and a full-screen viewer shared by Files and Journal.
+- **Secret detail view** — tapping a secret opens a read-first detail (masked value, reveal on demand, copy/delete) instead of jumping straight into the editor.
+- **Tap-to-copy 2FA codes** — tapping a TOTP row copies the current code.
+
+### Improved
+- **Premium feature voice across the app** — Home cards, Settings subtitles, the onboarding tour, empty states and toasts rewritten to speak plainly and precisely ("Wanna see something cool?" → "Take the tour"); removed a "passkeys" overclaim the Auth tab doesn't deliver; PWA install description updated.
+- **Alive colours actually appear** — the aurora layer was inserted behind the opaque wallpaper and blended into the white theme, so toggling it looked dead; layering and blend modes fixed, plus a UI polish pass over panels, buttons, empty states and the photo viewer.
 
 ## [2.0.5] — 2026-09-28
 

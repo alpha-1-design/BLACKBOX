@@ -2,6 +2,8 @@ const SecretsModule = (() => {
   let _secrets = [];
   let _activeCat = 'all';
   let _editingId = null;
+  let _viewingId = null; // detail mode: secret is being read, not edited
+  let _viewSecret = null;
 
   function init() {
     document.getElementById('addSecretBtn')?.addEventListener('click', () => openForm(null));
@@ -9,6 +11,24 @@ const SecretsModule = (() => {
     document.getElementById('cancelSecretBtn')?.addEventListener('click', closeForm);
     document.getElementById('secretForm')?.addEventListener('submit', async e => { e.preventDefault(); await saveForm(); });
     document.getElementById('toggleSecretVis')?.addEventListener('click', toggleVis);
+    document.getElementById('secretMoreBtn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      document.getElementById('secretMoreMenu')?.classList.toggle('open');
+    });
+    document.getElementById('secretMoreEdit')?.addEventListener('click', () => {
+      _closeMenu();
+      const s = currentSecret();
+      if (s) openForm(s);
+    });
+    document.getElementById('secretDelete')?.addEventListener('click', deleteViewing);
+    document.getElementById('secretDetailClose')?.addEventListener('click', closeForm);
+    document.getElementById('secretDetailReveal')?.addEventListener('click', toggleDetailVis);
+    document.getElementById('secretDetailCopy')?.addEventListener('click', copyDetail);
+    // Tapping anywhere outside the menu closes it.
+    document.addEventListener('click', e => {
+      const menu = document.getElementById('secretMoreMenu');
+      if (menu && menu.classList.contains('open') && !menu.contains(e.target)) menu.classList.remove('open');
+    });
     document.getElementById('secretsSearch')?.addEventListener('input', render);
     document.querySelectorAll('#secretPills .pill').forEach(p => {
       p.addEventListener('click', () => {
@@ -46,7 +66,7 @@ const SecretsModule = (() => {
           <span class="secret-item-name">${Vault.esc(s.name)}</span>
           <span class="secret-item-cat">${s.category}</span>
         </div>
-        <div class="secret-item-preview value-hidden">Click to reveal</div>
+        <div class="secret-item-preview">Tap to view</div>
         <div class="secret-item-meta">
           <span class="secret-item-date">${Vault.relTime(s.ts)}</span>
           <div class="secret-item-actions">
@@ -67,23 +87,15 @@ const SecretsModule = (() => {
     list.querySelectorAll('.secret-item').forEach(el => {
       el.addEventListener('click', e => {
         if (e.target.closest('.secret-action-btn')) return;
-        const preview = el.querySelector('.secret-item-preview');
         const secret = _secrets.find(x => x.id === el.dataset.id);
-        if (!secret) return;
-        if (preview.classList.contains('value-hidden')) {
-          preview.textContent = secret.value;
-          preview.classList.remove('value-hidden');
-        } else {
-          preview.textContent = 'Click to reveal';
-          preview.classList.add('value-hidden');
-        }
+        if (secret) openDetail(secret);
       });
     });
     list.querySelectorAll('.copy-btn').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
         const s = _secrets.find(x => x.id === btn.dataset.id);
-        if (s) { navigator.clipboard.writeText(s.value); toast('Copied'); }
+        if (s) { navigator.clipboard.writeText(s.value); toast('Copied to clipboard'); }
       });
     });
     list.querySelectorAll('.edit-btn').forEach(btn => {
@@ -105,14 +117,94 @@ const SecretsModule = (() => {
     });
   }
 
+  function currentSecret() {
+    return _secrets.find(x => x.id === (_editingId || _viewingId)) || null;
+  }
+
+  function _closeMenu() {
+    document.getElementById('secretMoreMenu')?.classList.remove('open');
+  }
+
+  function _setMode(viewing) {
+    document.getElementById('secretDetailView')?.classList.toggle('hidden', !viewing);
+    document.getElementById('secretForm')?.classList.toggle('hidden', viewing);
+  }
+
+  function _maskDetail() {
+    const v = document.getElementById('secretDetailValue');
+    if (v) {
+      v.textContent = '••••••••••••';
+      v.classList.add('value-hidden');
+    }
+  }
+
+  // Detail mode: full panel, value masked until asked for, read-first.
+  function openDetail(s) {
+    _viewingId = s.id;
+    _editingId = null;
+    _viewSecret = s;
+    document.getElementById('secretModalTitle').textContent = 'Secret';
+    document.getElementById('secretDetailName').textContent = s.name;
+    document.getElementById('secretDetailCat').textContent = s.category;
+    document.getElementById('secretDetailDate').textContent = Vault.relTime(s.ts);
+    _maskDetail();
+    const notes = document.getElementById('secretDetailNotes');
+    notes.textContent = s.notes || '';
+    notes.classList.toggle('hidden', !s.notes);
+    _setMode(true);
+    document.getElementById('secretMoreBtn')?.classList.remove('hidden');
+    document.getElementById('secretMoreEdit')?.classList.remove('hidden');
+    document.getElementById('secretMoreEditDiv')?.classList.remove('hidden');
+    document.getElementById('secretDelete')?.classList.remove('hidden');
+    _closeMenu();
+    document.getElementById('secretModal').classList.remove('hidden');
+  }
+
+  function toggleDetailVis() {
+    const v = document.getElementById('secretDetailValue');
+    if (!v || !_viewSecret) return;
+    if (v.classList.contains('value-hidden')) {
+      v.textContent = _viewSecret.value;
+      v.classList.remove('value-hidden');
+    } else {
+      _maskDetail();
+    }
+  }
+
+  async function copyDetail() {
+    if (!_viewSecret) return;
+    navigator.clipboard.writeText(_viewSecret.value);
+    toast('Copied to clipboard');
+  }
+
+  async function deleteViewing() {
+    const s = currentSecret();
+    _closeMenu();
+    if (!s) return;
+    // Close this panel first — the confirm dialog sits below it in the stack.
+    closeForm();
+    if (await uiConfirm('Delete Secret', `Delete "${s.name}" permanently?`, { danger: true, okLabel: 'Delete' })) {
+      await Vault.deleteSecret(s.id);
+      await refresh();
+    }
+  }
+
   function openForm(s) {
     _editingId = s ? s.id : null;
+    _viewingId = null;
+    _viewSecret = null;
     document.getElementById('secretModalTitle').textContent = s ? 'Edit Secret' : 'New Secret';
     document.getElementById('secretName').value = s ? s.name : '';
     document.getElementById('secretCategory').value = s ? s.category : 'api';
     document.getElementById('secretValue').value = s ? s.value : '';
     document.getElementById('secretValue').type = 'password';
     document.getElementById('secretNotes').value = s ? (s.notes || '') : '';
+    _setMode(false);
+    document.getElementById('secretMoreBtn')?.classList.toggle('hidden', !s);
+    document.getElementById('secretMoreEdit')?.classList.add('hidden');
+    document.getElementById('secretMoreEditDiv')?.classList.add('hidden');
+    document.getElementById('secretDelete')?.classList.toggle('hidden', !s);
+    _closeMenu();
     document.getElementById('secretModal').classList.remove('hidden');
     document.getElementById('secretName').focus();
   }
@@ -120,6 +212,10 @@ const SecretsModule = (() => {
   function closeForm() {
     document.getElementById('secretModal').classList.add('hidden');
     _editingId = null;
+    _viewingId = null;
+    _viewSecret = null;
+    _setMode(false); // next open starts from the form (Add secret)
+    _closeMenu();
     document.getElementById('secretForm').reset();
   }
 

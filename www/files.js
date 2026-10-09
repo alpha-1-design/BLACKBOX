@@ -3,6 +3,13 @@ const FilesManager = (() => {
   let _pkgFile = null;   // file chosen for the Send composer
   let _openFile = null;  // .bbshare chosen for the opener
   let _opened = null;    // unwrapped package content
+  let _view = 'list';        // 'list' | 'gallery'
+  let _gridUrls = [];        // object URLs owned by the current grid render
+  let _viewerIds = [];       // photo ids open in the full-screen viewer
+  let _viewerMeta = new Map(); // id -> file meta (names for the title bar)
+  let _viewerIdx = 0;
+  let _viewerUrl = null;
+  let _viewerSeq = 0;        // guards async races on fast prev/next
 
   function init() {
     document.getElementById('filesToggleBtn')?.addEventListener('click', () => {
@@ -12,6 +19,7 @@ const FilesManager = (() => {
     });
     document.getElementById('closeFilesBtn')?.addEventListener('click', () => {
       document.getElementById('filesSection').classList.add('hidden');
+      _revokeGridUrls(); // thumbnails are rebuilt on the next open
     });
     document.getElementById('importFileBtn')?.addEventListener('click', () => document.getElementById('fileImportInput')?.click());
     document.getElementById('fileImportInput')?.addEventListener('change', async e => {
@@ -22,10 +30,17 @@ const FilesManager = (() => {
         await refresh();
         toast(`Encrypted ${f.name}`);
       } catch {
-        toast('Import failed — file too large?', 'red');
+        toast('Import failed — the file may be too large', 'red');
       }
       e.target.value = '';
     });
+    document.getElementById('filesViewList')?.addEventListener('click', () => _setView('list'));
+    document.getElementById('filesViewGallery')?.addEventListener('click', () => _setView('gallery'));
+    document.getElementById('photoViewerClose')?.addEventListener('click', closeViewer);
+    document.getElementById('photoViewerPrev')?.addEventListener('click', () => _viewerStep(-1));
+    document.getElementById('photoViewerNext')?.addEventListener('click', () => _viewerStep(1));
+    document.getElementById('photoViewerDownload')?.addEventListener('click', _viewerDownload);
+    document.getElementById('photoViewerDelete')?.addEventListener('click', _viewerDelete);
     _initSend();
     _initOpen();
   }
@@ -42,6 +57,7 @@ const FilesManager = (() => {
     if (!list) return;
     if (_files.length === 0) {
       list.innerHTML = `<div class="empty-state"><p>No files yet.<br/>Tap <strong>Import</strong> to encrypt one.</p></div>`;
+      if (_view === 'gallery') _renderGrid();
       return;
     }
     list.innerHTML = _files.map(f => `
@@ -60,6 +76,20 @@ const FilesManager = (() => {
         </div>
       </div>
     `).join('');
+    // Tapping an image row opens it in the photo viewer; any other row
+    // downloads — the row is never dead space.
+    list.querySelectorAll('.file-item').forEach(el => {
+      el.addEventListener('click', async e => {
+        if (e.target.closest('.secret-action-btn')) return;
+        const f = _files.find(x => x.id === el.dataset.id);
+        if (f && (f.type || '').startsWith('image/')) {
+          const imgs = _files.filter(x => (x.type || '').startsWith('image/'));
+          openViewer(imgs.map(x => x.id), imgs.findIndex(x => x.id === f.id));
+          return;
+        }
+        try { await Vault.downloadFile(el.dataset.id); } catch { toast('Download failed', 'red'); }
+      });
+    });
     list.querySelectorAll('.dl-btn').forEach(btn => {
       btn.addEventListener('click', async e => {
         e.stopPropagation();
@@ -76,6 +106,132 @@ const FilesManager = (() => {
         }
       });
     });
+    if (_view === 'gallery') _renderGrid();
+  }
+
+  /* ── Photo gallery + full-screen viewer ── */
+  function _revokeGridUrls() {
+    _gridUrls.forEach(u => URL.revokeObjectURL(u));
+    _gridUrls = [];
+  }
+
+  function _setView(v) {
+    _view = v;
+    document.getElementById('filesViewList')?.classList.toggle('active', v === 'list');
+    document.getElementById('filesViewGallery')?.classList.toggle('active', v === 'gallery');
+    document.getElementById('filesList')?.classList.toggle('hidden', v !== 'list');
+    document.getElementById('filesGrid')?.classList.toggle('hidden', v !== 'gallery');
+    _renderFiles();
+  }
+
+  const _isImage = f => (f.type || '').startsWith('image/');
+
+  function _renderGrid() {
+    const grid = document.getElementById('filesGrid');
+    if (!grid) return;
+    _revokeGridUrls();
+    const imgs = _files.filter(_isImage);
+    if (imgs.length === 0) {
+      grid.innerHTML = `<div class="empty-state"><p>No photos yet.<br/>Import an image to fill your gallery.</p></div>`;
+      return;
+    }
+    grid.innerHTML = imgs.map(f => `
+      <div class="photo-cell" data-id="${f.id}" title="${Vault.esc(f.name)}">
+        <span class="photo-cell-ph"></span>
+      </div>
+    `).join('');
+    grid.querySelectorAll('.photo-cell').forEach(cell => {
+      const id = cell.dataset.id;
+      Vault.getFileBlob(id).then(blob => {
+        if (!blob || !cell.isConnected) return;
+        const url = URL.createObjectURL(blob);
+        if (!cell.isConnected) { URL.revokeObjectURL(url); return; }
+        _gridUrls.push(url);
+        cell.insertAdjacentHTML('beforeend', `<img src="${url}" alt=""/>`);
+      }).catch(() => {});
+      cell.addEventListener('click', () => {
+        openViewer(imgs.map(x => x.id), imgs.findIndex(x => x.id === id));
+      });
+    });
+  }
+
+  /** Open the shared full-screen viewer over a set of file ids (exported —
+   *  journal entries call it for their attached photos). */
+  async function openViewer(ids, index) {
+    try {
+      const all = await Vault.getAllFiles();
+      _viewerMeta = new Map(all.map(f => [f.id, f]));
+      _viewerIds = (ids || []).filter(id => _viewerMeta.has(id));
+    } catch { _viewerIds = []; }
+    if (!_viewerIds.length) { toast('Photo no longer exists', 'red'); return; }
+    // Align on the requested photo itself: the filtered list may have
+    // dropped ids that were deleted since the caller built its array.
+    const target = (ids || [])[index || 0];
+    const pos = _viewerIds.indexOf(target);
+    _viewerIdx = pos >= 0 ? pos : 0;
+    document.getElementById('photoViewer')?.classList.remove('hidden');
+    _viewerShow();
+  }
+
+  async function _viewerShow() {
+    const seq = ++_viewerSeq;
+    const id = _viewerIds[_viewerIdx];
+    if (!id) return;
+    const img = document.getElementById('photoViewerImg');
+    if (!img) return;
+    if (_viewerUrl) { URL.revokeObjectURL(_viewerUrl); _viewerUrl = null; }
+    document.getElementById('photoViewerTitle').textContent = _viewerMeta.get(id)?.name || 'Photo';
+    document.getElementById('photoViewerCount').textContent = `${_viewerIdx + 1} / ${_viewerIds.length}`;
+    img.style.opacity = '0.25';
+    try {
+      const blob = await Vault.getFileBlob(id);
+      if (seq !== _viewerSeq) return; // a newer navigation won the race
+      if (!blob) throw new Error('gone');
+      const url = URL.createObjectURL(blob);
+      if (seq !== _viewerSeq) { URL.revokeObjectURL(url); return; }
+      _viewerUrl = url;
+      img.src = url;
+      img.style.opacity = '1';
+    } catch {
+      if (seq !== _viewerSeq) return;
+      img.style.opacity = '0.25';
+      toast('Could not decrypt this photo', 'red');
+    }
+  }
+
+  function _viewerStep(d) {
+    if (!_viewerIds.length) return;
+    _viewerIdx = (_viewerIdx + d + _viewerIds.length) % _viewerIds.length;
+    _viewerShow();
+  }
+
+  async function _viewerDownload() {
+    const id = _viewerIds[_viewerIdx];
+    if (!id) return;
+    try { await Vault.downloadFile(id); } catch { toast('Download failed', 'red'); }
+  }
+
+  async function _viewerDelete() {
+    const id = _viewerIds[_viewerIdx];
+    if (!id) return;
+    const meta = _viewerMeta.get(id);
+    if (!await uiConfirm('Delete Photo', `Delete "${meta?.name || 'this photo'}" from the vault permanently?`, { danger: true, okLabel: 'Delete' })) return;
+    try { await Vault.deleteFile(id); } catch { toast('Delete failed', 'red'); return; }
+    _viewerIds.splice(_viewerIdx, 1);
+    if (!_viewerIds.length) closeViewer();
+    else { _viewerIdx = Math.min(_viewerIdx, _viewerIds.length - 1); _viewerShow(); }
+    await refresh(); // list + gallery reflect the deletion
+    if (typeof JournalModule !== 'undefined') JournalModule.refresh(); // attached-photo ids may have vanished
+  }
+
+  function closeViewer() {
+    _viewerSeq++; // invalidate any in-flight decrypt
+    if (_viewerUrl) { URL.revokeObjectURL(_viewerUrl); _viewerUrl = null; }
+    _viewerIds = [];
+    _viewerIdx = 0;
+    const img = document.getElementById('photoViewerImg');
+    if (img) { img.removeAttribute('src'); img.style.opacity = '1'; }
+    document.getElementById('photoViewer')?.classList.add('hidden');
   }
 
   /* ── Send: compose an encrypted package ── */
@@ -171,5 +327,5 @@ const FilesManager = (() => {
     setTimeout(() => t.remove(), 2500);
   }
 
-  return { init, refresh };
+  return { init, refresh, openViewer, closeViewer };
 })();

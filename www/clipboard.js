@@ -28,7 +28,7 @@ const EncClipboard = (() => {
     try {
       await Vault.saveClip(text); // encrypted at rest (AES-GCM)
       await _writeClipboard(text);
-      status.textContent = 'Copied — clipboard clears in 30s';
+      status.textContent = 'Copied · clipboard clears in 30 seconds';
       status.style.color = 'var(--green)';
       if (clearTimer) clearTimeout(clearTimer);
       clearTimer = setTimeout(async () => {

@@ -1,7 +1,11 @@
 /* Voice notes — record, replay, transcribe. Recordings are stored through
    the encrypted file vault like everything else. Transcription uses an
    on-device Whisper model (transformers.js), downloaded on first use and
-   cached by the browser; audio never leaves the device for processing. */
+   cached by the browser; audio never leaves the device for processing.
+   The first run downloads ~40 MB of model weights from a public CDN — that
+   transfer (and the library bundle) is the app's only network egress, and
+   Cancel tears it down through the service worker (transformers.js v2 has
+   no AbortSignal of its own). */
 const VoiceModule = (() => {
   let _mediaStream = null;
   let _recorder = null;
@@ -38,7 +42,7 @@ const VoiceModule = (() => {
     if (!list) return;
     const voices = all.filter(f => (f.type || '').startsWith('audio/'));
     if (voices.length === 0) {
-      list.innerHTML = '<div class="empty-state"><p>No voice notes yet.<br/>Tap the record button.</p></div>';
+      list.innerHTML = '<div class="empty-state"><p>No recordings yet.<br/>Tap Record to begin.</p></div>';
       return;
     }
     list.innerHTML = voices.map(f => `
@@ -61,6 +65,17 @@ const VoiceModule = (() => {
         </div>
       </div>`).join('');
 
+    // Tapping the row itself plays the note — same as the play button.
+    list.querySelectorAll('.voice-item').forEach(el => {
+      el.addEventListener('click', async e => {
+        if (e.target.closest('.secret-action-btn')) return;
+        const blob = await Vault.getFileBlob(el.dataset.id);
+        if (!blob) return;
+        const audio = document.getElementById('voiceAudio');
+        audio.src = URL.createObjectURL(blob);
+        audio.play();
+      });
+    });
     list.querySelectorAll('.play-btn').forEach(b => b.addEventListener('click', async () => {
       const blob = await Vault.getFileBlob(b.dataset.id);
       if (!blob) return;
@@ -109,8 +124,7 @@ const VoiceModule = (() => {
       const d = new Date();
       const name = `Voice note ${d.toLocaleDateString()} ${d.toLocaleTimeString()}.webm`;
       await Vault.saveFile(new File([blob], name, { type: blob.type }));
-      await refresh();
-      toast('Voice note encrypted & saved');
+      await refresh();        toast('Recording sealed in your vault');
     };
     _recorder.start();
     btn.textContent = 'Stop';
@@ -153,12 +167,23 @@ const VoiceModule = (() => {
     const cancelBtn = document.getElementById('voiceModelCancel');
 
     const controller = new AbortController();
-    const onCancel = () => controller.abort();
+    // Cancel stops the UI immediately, tells the service worker to tear down
+    // any in-flight library/model download, and discards every result from
+    // here on. (WASM inference already running can't be interrupted, but its
+    // output is dropped by the stopIfAborted() checks below.)
+    const onCancel = () => {
+      controller.abort();
+      _swPost('bb-cancel-external');
+      statusEl.textContent = '';
+      _hideProgress();
+      toast('Cancelled');
+    };
     const stopIfAborted = () => {
       if (controller.signal.aborted) throw new DOMException('Cancelled.', 'AbortError');
     };
 
     try {
+      _swPost('bb-reset-external'); // a previous Cancel must not kill this run
       _setProgress(0, 'Connecting to the speech model…');
       progressPanel.classList.remove('hidden');
       statusEl.textContent = 'Preparing…';
@@ -168,7 +193,15 @@ const VoiceModule = (() => {
       cancelBtn.addEventListener('click', onCancel);
 
       const asr = await _getASR({
-        onProgress: p => _setProgress(0.08 + p * 0.8, 'Downloading speech model…'),
+        onProgress: p => {
+          // progress_callback delivers {status, progress, …} objects (v2):
+          // accept both 0–100 and 0–1, ignore status-only events.
+          const raw = p && typeof p === 'object' && typeof p.progress === 'number' ? p.progress
+            : (typeof p === 'number' ? p : null);
+          if (raw === null) return;
+          const frac = raw > 1 ? raw / 100 : raw;
+          _setProgress(0.08 + frac * 0.8, 'First time only · ~40 MB · audio stays on-device');
+        },
       });
       stopIfAborted();
 
@@ -181,7 +214,9 @@ const VoiceModule = (() => {
 
       const blob = await Vault.getFileBlob(id);
       const audio = await _blobToFloat32(blob);
+      stopIfAborted();
       const out = await asr(audio);
+      stopIfAborted(); // a cancelled run's result is discarded, never saved
       const text = (out && out.text ? out.text : '').trim();
       statusEl.textContent = '';
       _hideProgress();
@@ -189,22 +224,31 @@ const VoiceModule = (() => {
         await Vault.setFileTranscript(id, text);
         progressPanel.classList.add('hidden');
         await refresh();
-        toast('Transcript saved (encrypted)');
+        toast('Transcript saved to your vault');
       } else {
         await uiAlert('Transcribe', 'No speech detected in this recording.');
       }
     } catch (e) {
       statusEl.textContent = '';
       _hideProgress();
-      if (e && e.name === 'AbortError') {
-        toast('Cancelled');
-        await uiAlert('Transcribe', 'Transcription cancelled. Run it again when you are ready.');
+      if (controller.signal.aborted) {
+        // Cancel: onCancel already stopped the UI and the service worker has
+        // torn down the download — nothing else to report.
       } else {
         await uiAlert('Transcribe', 'Could not run the speech model. Check your connection and try again.');
       }
     } finally {
       cancelBtn.removeEventListener('click', onCancel);
     }
+  }
+
+  // Ask the service worker to reset/cancel external (CDN) transfers.
+  function _swPost(msg) {
+    try {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage(msg);
+      }
+    } catch (_) { /* no controller yet — cancel still stops our own steps */ }
   }
 
   function _nextFrame() {
@@ -252,8 +296,9 @@ const VoiceModule = (() => {
     const barEl = document.getElementById('voiceModelBar');
     const ringEl = document.getElementById('voiceModelRing');
     const subEl = document.getElementById('voiceModelSub');
-    if (pctEl) pctEl.textContent = Math.round(pct) + '%';
-    if (barEl) barEl.style.transform = 'scaleX(' + Math.min(1, Math.max(0, pct)) + ')';
+    const clamped = Math.min(1, Math.max(0, pct));
+    if (pctEl) pctEl.textContent = Math.round(clamped * 100) + '%';
+    if (barEl) barEl.style.transform = 'scaleX(' + clamped + ')';
     if (ringEl) ringEl.classList.add('ring-active');
     if (subEl) subEl.textContent = sub || '';
   }

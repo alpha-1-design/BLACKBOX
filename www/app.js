@@ -38,6 +38,8 @@ window.addEventListener('DOMContentLoaded', () => {
   PrivacyModule.init();
   EncClipboard.init();
   VoiceModule.init();
+  PasswordGen.init();
+  VaultHealth.init();
 
   // Appearance suite (alive colours, wallpapers) + tour
   Appearance.apply();
@@ -490,6 +492,7 @@ function _refreshAll() {
   FilesManager.refresh();
   JournalModule.refresh();
   AuthModule.refresh();
+  VaultHealth.refreshScore();
 }
 
 /* ── SETTINGS ── */
@@ -602,7 +605,7 @@ async function _changePinFlow() {
     await Vault.changePin(cur, next); // re-encrypts all stores under the new key
     PIN = await Vault.hashPin(next);
     localStorage.setItem(PIN_KEY, PIN);
-    _toast('PIN updated');
+    _toast('PIN updated · vault resealed');
   } catch (err) {
     console.error('PIN change failed:', err);
     await uiAlert('Change PIN', 'Something went wrong while re-encrypting. Your old PIN still works.');
@@ -632,7 +635,8 @@ async function _showFaq() {
     { q: 'Is BLACKBOX open source?', a: 'Yes. The full source code is available on GitHub under the MIT license.' },
     { q: 'Where is my data stored?', a: 'All data is stored locally on your device in encrypted form. Nothing is sent to any server.' },
     { q: 'What if I forget my PIN?', a: 'PIN recovery is impossible by design — there is no backdoor. A factory reset will wipe all data.' },
-    { q: 'Is there cloud sync?', a: 'No. BLACKBOX is offline-only. The only network call is an optional manual update check — no data ever leaves your device.' },
+    { q: 'Is there cloud sync?', a: 'No. BLACKBOX is offline-only. The only network traffic is an optional manual update check and the one-time speech-model download for voice transcription — neither ever sends your data anywhere.' },
+    { q: 'Does transcription upload my audio?', a: 'No. The first transcription downloads a ~40 MB on-device speech model (Whisper tiny) from a public CDN, then all speech-to-text runs locally on your device. Audio and transcripts never leave the device; the model is cached, so later transcriptions work fully offline.' },
     { q: 'How strong is the encryption?', a: 'AES-256-GCM with PBKDF2-SHA256 key derivation (150,000 iterations). Industry standard.' },
     { q: 'Can I use biometrics?', a: 'Yes, if your device supports fingerprint or face unlock, you can enable it in Settings.' }
   ];
@@ -648,6 +652,7 @@ async function _showPrivacyPolicy() {
 • All data is stored locally on your device
 • No analytics, no tracking, no background network calls
 • Optional manual update check (Settings → Check for Updates) fetches the latest release version from GitHub
+• Voice transcription downloads a one-time ~40 MB on-device speech model from a public CDN — model weights only; your audio and transcripts are processed locally and never transmitted
 • No third-party SDKs or services
 • Biometric data never leaves your device (handled by Android)
 • Clipboard content is cleared after 30 seconds

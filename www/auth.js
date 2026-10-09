@@ -77,6 +77,18 @@ const AuthModule = (() => {
       });
     });
 
+    // Tapping the row copies the current code — the row is not dead space.
+    list.querySelectorAll('.totp-item').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.closest('.secret-action-btn')) return;
+        const c = _codes[el.dataset.id];
+        if (c && c.code && c.code !== '------') {
+          navigator.clipboard.writeText(c.code);
+          toast('Code copied');
+        }
+      });
+    });
+
     _totps.forEach(t => updateTotp(t));
   }
 

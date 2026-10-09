@@ -44,6 +44,20 @@ for (const f of appScripts) {
   check(sw.includes(`'./${f}'`), `service worker caches ${f}`);
 }
 
+// ── 2b. release-independent caches: speech library + Whisper model must
+// survive an app update (they used to be swept with the shell, forcing a
+// ~40 MB re-download and an online-first transcription after every release).
+check(sw.includes("'blackbox-cdn'"), 'service worker has a persistent CDN cache (blackbox-cdn)');
+check(sw.includes("'transformers-cache'"), 'service worker spares the transformers model cache on activate');
+check(!/ks\.filter\(k => k !== CACHE\)/.test(sw),
+  'activate() no longer deletes every non-shell cache');
+// Cancel in the voice modal must reach the service worker (transformers.js
+// v2 exposes no AbortSignal of its own).
+check(/bb-cancel-external/.test(sw) && /bb-cancel-external/.test(jsSources['voice.js']),
+  'voice Cancel message is wired to the service worker');
+// The "zero servers" claim must disclose the one-time model download.
+check(/40 MB/.test(jsSources['app.js']), 'FAQ/privacy discloses the one-time ~40 MB model download');
+
 // 3. no native dialogs in app code (colour-mismatch / flow-trap bug class)
 const offenders = [];
 for (const [f, src] of Object.entries(jsSources)) {

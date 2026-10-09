@@ -290,8 +290,19 @@ const Vault = (() => {
   /* ── Journal ── */
   async function saveEntry(e) {
     const store = _raw(_sk('journal')), id = e.id || crypto.randomUUID();
-    const entry = {id, eTitle: await _enc(e.title||'Untitled'), eBody: await _enc(e.body||''), category: e.category||'personal', ts: Date.now()};
+    // An explicit ts preserves the original entry date — edits and favorite
+    // toggles must never move a diary entry to "now". New entries get Date.now().
+    const entry = {id, eTitle: await _enc(e.title||'Untitled'), eBody: await _enc(e.body||''), category: e.category||'personal', ts: (typeof e.ts === 'number' && isFinite(e.ts)) ? e.ts : Date.now()};
     if (e.tags) entry.tags = e.tags;
+    // Photos: ids of encrypted files (bb_files). Ids are plain strings —
+    // changePin's re-encrypt loop leaves non-string fields untouched,
+    // and backup export serialises the raw store, so attachments travel
+    // with both flows unchanged.
+    if (Array.isArray(e.images)) entry.images = e.images.filter(x => typeof x === 'string');
+    // Mood (1–5) and favorite flag — plain numbers, so changePin's re-encrypt
+    // loop passes them through untouched, like images/tags.
+    if (typeof e.mood === 'number' && e.mood >= 1 && e.mood <= 5) entry.mood = e.mood;
+    if (e.fav) entry.fav = 1;
     store[id] = entry;
     _save(_sk('journal'), store); return id;
   }
@@ -301,6 +312,9 @@ const Vault = (() => {
       try {
         const item = {id, title: await _dec(r[id].eTitle), body: await _dec(r[id].eBody), category: r[id].category, ts: r[id].ts};
         if (r[id].tags) item.tags = r[id].tags;
+        if (Array.isArray(r[id].images)) item.images = r[id].images;
+        if (typeof r[id].mood === 'number') item.mood = r[id].mood;
+        if (r[id].fav) item.fav = true;
         out.push(item);
       } catch {}
     }

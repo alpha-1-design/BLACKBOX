@@ -1,5 +1,5 @@
 /* Appearance engine — wallpapers, alive colours, privacy dim.
-   All opt-in via Settings or the "Wanna see something cool?" tour.
+   All opt-in via Settings or the "Take the tour" experience.
    Reads/writes S (app.js settings) but applies DOM state itself. */
 const Appearance = (() => {
   let _layersReady = false;
@@ -16,8 +16,16 @@ const Appearance = (() => {
     if (!document.getElementById('auroraLayer')) {
       const a = document.createElement('div');
       a.id = 'auroraLayer';
-      a.innerHTML = '<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>';
-      app.insertBefore(a, app.firstChild);
+      // Six orbs on coprime loops — the field never visibly repeats.
+      a.innerHTML = '<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>' +
+                    '<div class="blob b4"></div><div class="blob b5"></div><div class="blob b6"></div>';
+      // Insert AFTER the wallpaper so the aurora paints on top of it.
+      // (It used to be inserted first, so the opaque wallpaper gradient
+      //  covered the whole field — the tour enables both at once, which
+      //  is why "Alive colours" looked like nothing was happening.)
+      const w = document.getElementById('wallpaperLayer');
+      if (w && w.nextSibling) app.insertBefore(a, w.nextSibling);
+      else app.appendChild(a);
     }
     _layersReady = true;
   }

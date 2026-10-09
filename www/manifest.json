@@ -1,7 +1,7 @@
 {
   "name": "BLACKBOX",
   "short_name": "BLACKBOX",
-  "description": "Offline security hub for developers — encrypted secrets, journal, 2FA, and privacy tools.",
+  "description": "The offline-first security vault — secrets, journal, 2FA and privacy tools, encrypted on your device.",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",

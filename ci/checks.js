@@ -95,6 +95,15 @@ try {
 }
 
 // ---------------------------------------------------------------------------
+section('Feature logic (generator + vault health)');
+try {
+  execFileSync(process.execPath, [path.join(__dirname, 'features.test.js')], { stdio: 'inherit' });
+  ok('generator entropy + health scoring contract holds');
+} catch (e) {
+  fail('feature logic tests failed (see output above)');
+}
+
+// ---------------------------------------------------------------------------
 section('UI contract tests (id references, cache, native dialogs)');
 try {
   execFileSync(process.execPath, [path.join(__dirname, 'ui-contract.js')], { stdio: 'inherit' });
