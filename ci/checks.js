@@ -113,6 +113,46 @@ try {
 }
 
 // ---------------------------------------------------------------------------
+section('Lock-screen character (shield/reveal timing + haptics)');
+// The character's correctness is *timing*, which no static check can see: a
+// stale revert timer wiping the smile mid-animation, or a reveal firing on the
+// 4th digit, both grep clean and both boot clean. ci/buddy.test.js drives the
+// real module against a virtual clock and asserts the states it lands in.
+try {
+  execFileSync(process.execPath, [path.join(__dirname, 'buddy.test.js')], { stdio: 'inherit' });
+  ok('character state machine: shield/reveal timing, haptics and wiring hold');
+} catch (e) {
+  fail('character state machine tests failed (see output above)');
+}
+
+// ---------------------------------------------------------------------------
+section('Voice recorder (durations, pause accounting, take protection)');
+// The recorder's two failure modes are invisible to static analysis: a duration
+// that silently drifts when the WebView throttles timers (screen off, app
+// backgrounded — i.e. while recording a long note), and a reviewed take that a
+// stray tap destroys. ci/voice.test.js drives the real module through its own
+// click handlers with fake timers and a fake clock.
+try {
+  execFileSync(process.execPath, [path.join(__dirname, 'voice.test.js')], { stdio: 'inherit' });
+  ok('voice recorder: wall-clock durations, pause accounting and take guards hold');
+} catch (e) {
+  fail('voice recorder tests failed (see output above)');
+}
+
+// ---------------------------------------------------------------------------
+section('Boot test (scripts load in order, init runs, globals exist)');
+// Every other check here is static text analysis. This one loads www/ in the
+// order index.html declares behind a DOM stub and runs the real DOMContentLoaded
+// path, so a script that exists on disk but is never included (overlay.js) or a
+// broken cross-module contract fails the build instead of reaching users.
+try {
+  execFileSync(process.execPath, [path.join(__dirname, 'boot.test.js')], { stdio: 'inherit' });
+  ok('app boots: no missing globals, clean init, cross-module contracts hold');
+} catch (e) {
+  fail('boot test failed (see output above)');
+}
+
+// ---------------------------------------------------------------------------
 section('Web app: syntax + Share references');
 
 const www = path.join(ROOT, 'www');

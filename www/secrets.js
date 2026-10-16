@@ -92,10 +92,15 @@ const SecretsModule = (() => {
       });
     });
     list.querySelectorAll('.copy-btn').forEach(btn => {
-      btn.addEventListener('click', e => {
+      btn.addEventListener('click', async e => {
         e.stopPropagation();
         const s = _secrets.find(x => x.id === btn.dataset.id);
-        if (s) { navigator.clipboard.writeText(s.value); toast('Copied to clipboard'); }
+        if (!s) return;
+        // Routed through EncClipboard so the value is purged after 30s like
+        // every other copy in the app (this used to write directly and never
+        // clear, leaving the secret on the clipboard indefinitely).
+        const res = await EncClipboard.copy(s.value);
+        toast(EncClipboard.copyMessage(res), !res.ok);
       });
     });
     list.querySelectorAll('.edit-btn').forEach(btn => {
@@ -173,8 +178,8 @@ const SecretsModule = (() => {
 
   async function copyDetail() {
     if (!_viewSecret) return;
-    navigator.clipboard.writeText(_viewSecret.value);
-    toast('Copied to clipboard');
+    const res = await EncClipboard.copy(_viewSecret.value);
+    toast(EncClipboard.copyMessage(res), !res.ok);
   }
 
   async function deleteViewing() {
@@ -235,9 +240,9 @@ const SecretsModule = (() => {
     inp.type = inp.type === 'password' ? 'text' : 'password';
   }
 
-  function toast(msg) {
+  function toast(msg, red) {
     const t = document.createElement('div');
-    t.className = 'toast green';
+    t.className = 'toast ' + (red ? 'red' : 'green');
     t.textContent = msg;
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 2000);

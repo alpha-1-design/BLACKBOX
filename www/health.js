@@ -126,6 +126,7 @@ const VaultHealth = (() => {
   function init() {
     document.getElementById('openHealthBtn')?.addEventListener('click', () => open());
     document.getElementById('closeHealthModal')?.addEventListener('click', close);
+    document.querySelector('#healthModal .modal-backdrop')?.addEventListener('click', close);
     document.getElementById('healthRescan')?.addEventListener('click', render);
     refreshScore();
   }

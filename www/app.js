@@ -14,7 +14,7 @@ let lockoutEnd = 0;
 let lockoutInterval = null;
 let autoLockTimer = null;
 
-let S = {blur: false, shake: false, autoLock: true, selfDestruct: false, alive: false, wallpaper: 'none'};
+let S = {blur: false, shake: false, autoLock: true, selfDestruct: false, alive: true, wallpaper: 'none', uiStyle: 'glass', voiceModel: 'Xenova/whisper-tiny.en', theme: 'dark'};
 try { S = {...S, ...JSON.parse(localStorage.getItem(SETT_KEY) || '{}')}; } catch {}
 
 const App = { lock: _lockApp };
@@ -26,6 +26,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (aboutVersion && window.Updater) aboutVersion.textContent = 'BLACKBOX v' + Updater.currentVersion;
 
   _initDialogs();
+  _initModalA11y();
   _initLock();
   _initBiometric();
   _initNav();
@@ -41,9 +42,39 @@ window.addEventListener('DOMContentLoaded', () => {
   PasswordGen.init();
   VaultHealth.init();
 
+  // Escape dismisses the topmost open modal (keyboard parity with the X/close buttons).
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    // `.modal:not(.hidden)` alone also matches panels nested in an inactive
+    // .tab-content — those are display:none via their ancestor, not via their
+    // own class — so Escape could "click" a close button on an invisible
+    // panel. getClientRects() is empty for anything not actually rendered.
+    const openMods = [...document.querySelectorAll('.modal:not(.hidden)')]
+      .filter(m => m.getClientRects().length > 0);
+    if (!openMods.length) return;
+    const top = openMods[openMods.length - 1];
+    const btn = top.querySelector('.modal-close-btn') || top.querySelector('.modal-cancel');
+    btn?.click();
+  });
+
   // Appearance suite (alive colours, wallpapers) + tour
   Appearance.apply();
   _syncToggle('aliveToggle', S.alive, v => { S.alive = v; _saveSett(); Appearance.apply(); });
+  const uiStyleSel = document.getElementById('uiStyleSelect');
+  if (uiStyleSel) {
+    uiStyleSel.value = S.uiStyle || 'solid';
+    uiStyleSel.addEventListener('change', () => { S.uiStyle = uiStyleSel.value; _saveSett(); Appearance.apply(); });
+  }
+  const themeSel = document.getElementById('themeSelect');
+  if (themeSel) {
+    themeSel.value = S.theme || 'dark';
+    themeSel.addEventListener('change', () => { S.theme = themeSel.value; _saveSett(); Appearance.apply(); });
+  }
+  const voiceModelSel = document.getElementById('voiceModelSelect');
+  if (voiceModelSel) {
+    voiceModelSel.value = S.voiceModel || 'Xenova/whisper-tiny.en';
+    voiceModelSel.addEventListener('change', () => { S.voiceModel = voiceModelSel.value; _saveSett(); });
+  }
   const wallSel = document.getElementById('wallpaperSelect');
   if (wallSel) {
     wallSel.value = S.wallpaper;
@@ -51,6 +82,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   document.getElementById('coolTourBtn')?.addEventListener('click', () => CoolTour.open());
   document.getElementById('closeCoolModal')?.addEventListener('click', () => document.getElementById('coolModal').classList.add('hidden'));
+  document.querySelector('#coolModal .modal-backdrop')?.addEventListener('click', () => document.getElementById('coolModal').classList.add('hidden'));
 });
 
 document.addEventListener('visibilitychange', () => {
@@ -80,6 +112,21 @@ const Dialog = (() => {
     });
     document.getElementById('promptInput')?.addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); document.getElementById('promptOk').click(); }
+    });
+
+    // Backdrop dismissal was inconsistent: most panels closed when you tapped
+    // outside, but these three did nothing — the same visual affordance
+    // behaving differently depending on which dialog you happened to be
+    // looking at. Each routes through its own cancel path, so the semantics
+    // (false / null / dismiss) are unchanged.
+    document.querySelector('#infoModal .modal-backdrop')?.addEventListener('click', () => {
+      hide('infoModal'); if (alertRes) { alertRes(); alertRes = null; }
+    });
+    document.querySelector('#deleteModal .modal-backdrop')?.addEventListener('click', () => {
+      hide('deleteModal'); if (confirmRes) { confirmRes(false); confirmRes = null; }
+    });
+    document.querySelector('#promptModal .modal-backdrop')?.addEventListener('click', () => {
+      hide('promptModal'); if (promptRes) { promptRes(null); promptRes = null; }
     });
   }
 
@@ -131,6 +178,7 @@ function _initDialogs() { Dialog.init(); }
    LOCK
    ══════════════════════════════════════════════ */
 function _initLock() {
+  PinBuddy.attach(); // the lock-screen character (buddy.js)
   document.querySelectorAll('#numpad .num-key[data-digit]').forEach(b => b.addEventListener('click', () => _addDigit(b.dataset.digit)));
   document.getElementById('delBtn')?.addEventListener('click', _delDigit);
   document.getElementById('decoyBtn')?.addEventListener('click', _triggerPanic);
@@ -254,6 +302,7 @@ async function _biometricUnlock() {
         // but there is nothing to unlock with. Fall back to the PIN pad.
         return;
       }
+      PinBuddy.unlock();
       _showApp();
     }
   } catch (e) { console.error('Biometric error:', e); }
@@ -261,15 +310,23 @@ async function _biometricUnlock() {
 
 function _addDigit(d) {
   if (_isLockedOut()) return;
+  if (_verifying) return; // a check is in flight; ignoring taps prevents a second
+                          // concurrent _checkPin (two shakes, two _refreshAll)
   if (digits.length >= 4) return;
   if (_setupActive) return;
   digits.push(d);
+  PinBuddy.input(); // eyes shut the instant a digit lands — see buddy.js
   _renderDots();
   if (digits.length === 4) _checkPin();
 }
 
 function _delDigit() {
-  if (digits.length > 0) { digits.pop(); _renderDots(); document.getElementById('pinError').textContent = ''; }
+  if (_verifying) return;
+  if (digits.length === 0) return;
+  digits.pop();
+  PinBuddy.input(); // still actively typing, so the eyes stay shut
+  _renderDots();
+  document.getElementById('pinError').textContent = '';
 }
 
 function _renderDots() {
@@ -279,7 +336,33 @@ function _renderDots() {
   });
 }
 
+let _verifying = false; // true while _verifyPin() is in flight — see _checkPin
+
+/* Key derivation is deliberately expensive (PBKDF2), so there is a real gap
+   between the 4th digit and either outcome — long enough on a low-end phone to
+   look like a dropped tap. This wrapper only exists to bracket that gap: the
+   pad dims and the dots pulse while _verifyPin() is in flight, and the
+   `finally` guarantees the state is cleared on every exit path (success, wrong
+   PIN, decoy panic, self-destruct) so the pad can never be left dimmed. */
 async function _checkPin() {
+  const content = document.querySelector('.lock-content');
+  const endVerifying = () => { _verifying = false; content?.classList.remove('verifying'); };
+  _verifying = true;
+  content?.classList.add('verifying');
+  // Safety net only: the pad is dimmed and input is ignored while this is set,
+  // so if a derivation ever failed to settle it would lock the user out of
+  // their own lock screen. A watchdog that can only *clear* the state costs
+  // nothing on the normal path and makes the dimming strictly safe.
+  const watchdog = setTimeout(endVerifying, 8000);
+  try {
+    await _verifyPin();
+  } finally {
+    clearTimeout(watchdog);
+    endVerifying();
+  }
+}
+
+async function _verifyPin() {
   const entered = digits.join('');
   digits = [];
   _renderDots();
@@ -309,9 +392,11 @@ async function _checkPin() {
     _bioReady = true; // key is persisted → fingerprint can unlock from now on
     const bioBtn = document.getElementById('biometricBtn');
     if (bioBtn && window.Capacitor?.Plugins?.ShieldBiometric) bioBtn.style.display = 'flex';
+    PinBuddy.unlock(); // it peeks and smiles as the vault opens
     _showApp();
   } else {
     failCount++;
+    PinBuddy.reject(); // a small "hands up" to go with the dot shake
     document.getElementById('lockAttemptInfo').textContent = `Attempt ${failCount}/5`;
     const errEl = document.getElementById('pinError');
     errEl.textContent = 'Wrong PIN';
@@ -341,10 +426,16 @@ function _startLockout() {
     if (rem <= 0) {
       clearInterval(lockoutInterval);
       lockoutEnd = 0;
-      failCount = 0;
+      // failCount deliberately NOT reset here. Resetting it made the
+      // documented Self-Destruct unreachable: attempts 1-3 started a lockout,
+      // the lockout zeroed the counter, and _addDigit refuses input while
+      // locked out — so the counter could never climb past 3 and the
+      // `failCount >= 5` wipe was dead code. Failures now accumulate across
+      // lockouts and only a successful unlock clears them.
       if (numpad) { numpad.style.opacity = ''; numpad.style.pointerEvents = ''; }
       if (el) el.classList.add('hidden');
-      document.getElementById('lockAttemptInfo').textContent = '';
+      const info = document.getElementById('lockAttemptInfo');
+      if (info) info.textContent = failCount > 0 ? `Attempt ${failCount}/5` : '';
     } else {
       if (el) el.textContent = `Locked out — wait ${rem}s`;
     }
@@ -386,16 +477,35 @@ function _showApp() {
   _notifyIfUpdate();
 }
 
+/* Tear down every open overlay.
+   Only modals living inside #mainApp were hidden by hiding that container;
+   #genModal, #healthModal, #voiceModal, #coolModal, #infoModal, #deleteModal
+   and #promptModal are direct children of <body> at z-index 1100 — above the
+   lock screen (z-index 1000). So opening the Password Generator and walking
+   away left the plaintext password sitting on top of an unlocked-looking
+   lock screen, and the Change-PIN prompt stayed readable too. Lock now closes
+   everything, releases media, and drops decrypted object URLs. */
+function _closeAllOverlays() {
+  document.querySelectorAll('.modal:not(.hidden)').forEach(m => m.classList.add('hidden')); // every panel, visible or not
+  document.getElementById('panicOverlay')?.classList.add('hidden');
+  document.getElementById('voiceProgressPanel')?.classList.add('hidden');
+  if (typeof VoiceModule !== 'undefined' && VoiceModule.abort) VoiceModule.abort();
+  if (typeof FilesManager !== 'undefined' && FilesManager.closeViewer) FilesManager.closeViewer();
+  _lastActivityAt = 0;
+}
+
 function _lockApp() {
   if (_animLock) return; // don't fight the unlock transition
   if (!Vault.isUnlocked() && document.getElementById('lockScreen').classList.contains('active')) return;
   Vault.lock();
   AuthModule.stopTimers();
+  _closeAllOverlays();
   const lock = document.getElementById('lockScreen');
   lock.classList.remove('unlocking');
   lock.classList.add('active');
   document.getElementById('mainApp').classList.add('hidden');
   digits = [];
+  PinBuddy.idle();
   _renderDots();
   document.querySelectorAll('.pin-display .pin-dot').forEach(d => d.classList.remove('error'));
   document.getElementById('pinError').textContent = '';
@@ -414,9 +524,26 @@ function _clearAutoLock() {
   if (autoLockTimer) { clearTimeout(autoLockTimer); autoLockTimer = null; }
 }
 
-document.addEventListener('touchstart', () => {
-  if (!document.getElementById('lockScreen').classList.contains('active')) _resetAutoLock();
-}, {passive: true});
+/* Any real interaction resets the idle timer. Binding touchstart alone meant
+   typing on the Android soft keyboard — a separate window, so its taps never
+   reach the document — or using a desktop/PWA session let the vault seal
+   itself mid-sentence with the form unsaved. Throttled to 1/s; mousemove and
+   scroll would otherwise re-arm the timer hundreds of times a second. */
+const _ACTIVITY_EVENTS = ['touchstart', 'pointerdown', 'keydown', 'wheel', 'scroll', 'mousemove'];
+let _lastActivityAt = 0;
+let _lockEl = null;
+function _onActivity() {
+  // Cheap throttle first: these fire continuously, so the DOM lookup below
+  // must not run per-event (mousemove alone would do it hundreds of times a
+  // second). Longest path is now one getElementById per second.
+  const now = Date.now();
+  if (now - _lastActivityAt < 1000) return;
+  if (!_lockEl) _lockEl = document.getElementById('lockScreen');
+  if (_lockEl && _lockEl.classList.contains('active')) return;
+  _lastActivityAt = now;
+  _resetAutoLock();
+}
+_ACTIVITY_EVENTS.forEach(ev => document.addEventListener(ev, _onActivity, { passive: true, capture: true }));
 
 /* ── PANIC CALCULATOR (decoy) — no eval(), no globals on onclick ── */
 let calcExpr = '', calcPrev = null, calcOp = null, calcFresh = true;
@@ -515,7 +642,36 @@ function _initSettings() {
     _saveSett();
   });
   _syncToggle('selfDestructToggle', S.selfDestruct, v => { S.selfDestruct = v; _saveSett(); });
-  _syncToggle('clipAutoClear', true, () => {});
+  const shakeEl = document.getElementById('shakeToggle');
+  if (shakeEl) {
+    shakeEl.checked = !!S.shake;
+    shakeEl.addEventListener('change', async () => {
+      const on = shakeEl.checked;
+      if (!on) { ShakeLock.disable(); S.shake = false; _saveSett(); return; }
+      const ok = await ShakeLock.enable();
+      if (!ok) {
+        // Never leave the switch claiming a capability the device refused.
+        shakeEl.checked = false;
+        S.shake = false;
+        _saveSett();
+        await uiAlert('Shake to Lock', 'This device did not grant motion access, so shake-to-lock could not be enabled.');
+        return;
+      }
+      S.shake = true;
+      _saveSett();
+      _toast('Shake to lock enabled');
+    });
+  }
+  // This toggle used to be wired to an empty callback, so it rendered checked
+  // and did nothing — a switch that silently lied. It now drives the real
+  // clipboard auto-clear (on by default).
+  if (typeof S.clipAutoClear !== 'boolean') S.clipAutoClear = true;
+  _syncToggle('clipAutoClear', S.clipAutoClear, v => {
+    S.clipAutoClear = v;
+    _saveSett();
+    EncClipboard.setAutoClear(v);
+  });
+  EncClipboard.setAutoClear(S.clipAutoClear);
 
   document.getElementById('changePinBtn')?.addEventListener('click', _changePinFlow);
   document.getElementById('setupDecoyBtn')?.addEventListener('click', _setupDecoyFlow);
@@ -569,7 +725,16 @@ function _initSettings() {
   document.getElementById('githubBtn')?.addEventListener('click', () => window.open('https://github.com/alpha-1-design/BLACKBOX', '_blank'));
   document.getElementById('faqBtn')?.addEventListener('click', _showFaq);
   document.getElementById('privacyPolicyBtn')?.addEventListener('click', _showPrivacyPolicy);
-  document.getElementById('updateStatus')?.addEventListener('click', _checkUpdate);
+  // One tap, one outcome. This row used to fire BOTH listeners: its own
+  // _checkUpdate() and the document-level chooser below, so tapping "Update
+  // available" re-ran the network check (resetting the label to "Checking…")
+  // and popped the store picker on top of it. The chooser owns the tap
+  // whenever an update is already known.
+  document.getElementById('updateStatus')?.addEventListener('click', () => {
+    const row = document.getElementById('updateStatus');
+    if (row && row._updateData) return;
+    _checkUpdate();
+  });
 }
 
 function _syncToggle(id, val, onChange) {
@@ -581,6 +746,7 @@ function _syncToggle(id, val, onChange) {
 
 function _applySettings() {
   if (S.blur) PrivacyOverlay.enable();
+  _applyShake();
 }
 
 function _saveSett() { localStorage.setItem(SETT_KEY, JSON.stringify(S)); }
@@ -636,7 +802,7 @@ async function _showFaq() {
     { q: 'Where is my data stored?', a: 'All data is stored locally on your device in encrypted form. Nothing is sent to any server.' },
     { q: 'What if I forget my PIN?', a: 'PIN recovery is impossible by design — there is no backdoor. A factory reset will wipe all data.' },
     { q: 'Is there cloud sync?', a: 'No. BLACKBOX is offline-only. The only network traffic is an optional manual update check and the one-time speech-model download for voice transcription — neither ever sends your data anywhere.' },
-    { q: 'Does transcription upload my audio?', a: 'No. The first transcription downloads a ~40 MB on-device speech model (Whisper tiny) from a public CDN, then all speech-to-text runs locally on your device. Audio and transcripts never leave the device; the model is cached, so later transcriptions work fully offline.' },
+    { q: 'Does transcription upload my audio?', a: 'No. The first transcription downloads a ~40 MB on-device speech model (Xenova/whisper-tiny.en, OpenAI Whisper tiny converted for browser) from a public CDN, then all speech-to-text runs locally on your device. Audio and transcripts never leave the device; the model is cached, so later transcriptions work fully offline.' },
     { q: 'How strong is the encryption?', a: 'AES-256-GCM with PBKDF2-SHA256 key derivation (150,000 iterations). Industry standard.' },
     { q: 'Can I use biometrics?', a: 'Yes, if your device supports fingerprint or face unlock, you can enable it in Settings.' }
   ];
@@ -736,6 +902,69 @@ document.addEventListener('click', async e => {
     }
   }
 });
+
+/* ══════════════════════════════════════════════
+   MODAL ACCESSIBILITY
+   Only the voice panel carried role="dialog"/aria-modal; every other panel
+   was an unnamed, unfocusable div. Screen readers announced nothing and Tab
+   walked straight into the page behind the panel. This decorates all of them
+   and manages focus across open/close, including handing focus back to
+   whatever opened the dialog.
+   ══════════════════════════════════════════════ */
+function _initModalA11y() {
+  const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
+  let lastFocus = null;
+  let openStack = [];
+
+  document.querySelectorAll('.modal').forEach(m => {
+    const box = m.querySelector('.modal-box');
+    if (box) {
+      if (!box.hasAttribute('role')) box.setAttribute('role', 'dialog');
+      box.setAttribute('aria-modal', 'true');
+      box.setAttribute('tabindex', '-1');
+      // Name the dialog from its own title bar, so it is announced as
+      // "Confirm Your PIN, dialog" rather than an unlabelled group.
+      const title = box.querySelector('.modal-title');
+      if (title && !box.hasAttribute('aria-labelledby')) {
+        if (!title.id) title.id = 'modal-title-' + (m.id || Math.random().toString(36).slice(2, 8));
+        box.setAttribute('aria-labelledby', title.id);
+      }
+    }
+    new MutationObserver(() => {
+      const open = !m.classList.contains('hidden');
+      if (open) {
+        if (!openStack.includes(m)) openStack.push(m);
+        if (!lastFocus) lastFocus = document.activeElement;
+        const target = (box && box.querySelector(FOCUSABLE)) || box;
+        // Next frame, so the panel has been laid out before focus enters it.
+        // preventScroll keeps the page behind from jumping.
+        requestAnimationFrame(() => { try { target?.focus?.({ preventScroll: true }); } catch {} });
+      } else {
+        openStack = openStack.filter(x => x !== m);
+        // Hand focus back only once nothing else is stacked on top.
+        if (!openStack.length && lastFocus && lastFocus.isConnected) {
+          try { lastFocus.focus({ preventScroll: true }); } catch {}
+          lastFocus = null;
+        }
+      }
+    }).observe(m, { attributes: true, attributeFilter: ['class'] });
+  });
+}
+
+/* ── SHAKE TO LOCK ──
+   S.shake was declared and never read, shake.js was never enabled and there
+   was no settings row — the README has advertised "shake-to-lock" since 2.0.0
+   while nothing could turn it on. The toggle below is the real switch, and
+   enable() now reports whether it actually bound (the permission prompt can
+   be declined, and some devices report no motion at all). */
+function _applyShake() {
+  if (!S.shake) { ShakeLock.disable(); return; }
+  ShakeLock.enable().then(ok => {
+    const t = document.getElementById('shakeToggle');
+    if (t) t.checked = ok;
+    if (!ok) { S.shake = false; _saveSett(); }
+  });
+}
 
 /* ── TOAST ── */
 function _toast(msg, type) {

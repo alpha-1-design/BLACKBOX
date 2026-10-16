@@ -1,0 +1,1 @@
+First-run PIN setup no longer always reports a mismatch. Microphone permission now prompts correctly for voice notes. Fingerprint unlock works again after an app restart. Updating the app no longer forces a ~40 MB re-download of the speech model, Cancel actually stops a model download, and transcription progress shows real percentages.

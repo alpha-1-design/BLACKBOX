@@ -295,7 +295,8 @@ const JournalModule = (() => {
         const url = URL.createObjectURL(blob);
         if (!el.isConnected) { URL.revokeObjectURL(url); return; }
         _thumbUrls.push(url);
-        el.insertAdjacentHTML('afterbegin', `<img src="${url}" alt=""/>`);
+        const tag = (blob.type || '').startsWith('video/') ? `<video src="${url}" muted playsinline></video>` : `<img src="${url}" alt=""/>`;
+        el.insertAdjacentHTML('afterbegin', tag);
       }).catch(() => {});
     });
     wrap.querySelectorAll('.jthumb-x').forEach(btn => {
@@ -337,7 +338,8 @@ const JournalModule = (() => {
         const url = URL.createObjectURL(blob);
         if (!cell.isConnected) { URL.revokeObjectURL(url); return; }
         _readUrls.push(url);
-        cell.innerHTML = `<img src="${url}" alt=""/>`;
+        const tag = (blob.type || '').startsWith('video/') ? `<video src="${url}" muted playsinline></video>` : `<img src="${url}" alt=""/>`;
+        cell.innerHTML = tag;
       }).catch(() => {});
     });
   }

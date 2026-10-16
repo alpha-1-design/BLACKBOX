@@ -60,10 +60,14 @@ const AuthModule = (() => {
     `).join('');
 
     list.querySelectorAll('.copy-totp').forEach(btn => {
-      btn.addEventListener('click', e => {
+      btn.addEventListener('click', async e => {
         e.stopPropagation();
         const code = _codes[btn.dataset.id];
-        if (code) { navigator.clipboard.writeText(code); toast('Code copied'); }
+        if (!code) return;
+        // A live 2FA code on the clipboard indefinitely is a real exposure;
+        // it now purges on the same 30-second schedule as everything else.
+        const res = await EncClipboard.copy(code);
+        toast(EncClipboard.copyMessage(res), !res.ok);
       });
     });
     list.querySelectorAll('.delete-totp').forEach(btn => {
@@ -79,13 +83,12 @@ const AuthModule = (() => {
 
     // Tapping the row copies the current code — the row is not dead space.
     list.querySelectorAll('.totp-item').forEach(el => {
-      el.addEventListener('click', e => {
+      el.addEventListener('click', async e => {
         if (e.target.closest('.secret-action-btn')) return;
         const c = _codes[el.dataset.id];
-        if (c && c.code && c.code !== '------') {
-          navigator.clipboard.writeText(c.code);
-          toast('Code copied');
-        }
+        if (!c || !c.code || c.code === '------') return;
+        const res = await EncClipboard.copy(c.code);
+        toast(EncClipboard.copyMessage(res), !res.ok);
       });
     });
 
@@ -182,9 +185,9 @@ const AuthModule = (() => {
     await refresh();
   }
 
-  function toast(msg) {
+  function toast(msg, red) {
     const t = document.createElement('div');
-    t.className = 'toast green';
+    t.className = 'toast ' + (red ? 'red' : 'green');
     t.textContent = msg;
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 2000);

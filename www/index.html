@@ -3,13 +3,16 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <!-- Single theme-color: appearance.js rewrites it to follow the user's
+       actual theme choice. The old media-scoped pair could only ever track
+       the OS, so choosing Light on a dark phone still painted a black status
+       bar. A light default is emitted here so the pre-JS paint is not black. -->
   <meta name="theme-color" content="#fafafa"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <title>BLACKBOX</title>
   <link rel="manifest" href="manifest.json"/>
   <link rel="stylesheet" href="styles.css"/>
   <script src="updater.js"></script>
-  <script src="maintenance.js"></script>
 </head>
 <body>
 
@@ -49,11 +52,38 @@
 <div id="lockScreen" class="lock-screen active">
   <canvas id="lockCanvas" class="lock-canvas"></canvas>
   <div class="lock-content">
+    <!-- Lock-screen character. A little black box (on-brand) that shuts its
+         eyes with its paws while a PIN is being typed and peeks again once you
+         stop. Purely decorative, so it is aria-hidden; all behaviour lives in
+         buddy.js and the animation in styles.css. The paws sit at rest below
+         the face and translate up in .is-shielding. -->
     <div class="app-logo">
-      <svg class="logo-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="10" y="8" width="28" height="32" rx="5"/>
-        <rect x="19" y="20" width="10" height="20" rx="2"/>
-        <circle cx="24" cy="25" r="2"/>
+      <svg id="pinBuddy" class="pin-buddy is-idle" viewBox="0 0 120 116" aria-hidden="true" focusable="false">
+        <!-- Painted back to front: halo, LED, stem, body, face panel, hardware,
+             then eyes and paws last so the paws land ON TOP of the eyes. -->
+        <circle class="buddy-led-halo" cx="60" cy="10" r="8"/>
+        <circle class="buddy-led" cx="60" cy="10" r="4.5"/>
+        <line class="buddy-stem" x1="60" y1="15" x2="60" y2="26"/>
+        <rect class="buddy-body" x="14" y="22" width="92" height="74" rx="22"/>
+        <rect class="buddy-face" x="22" y="48" width="76" height="40" rx="13"/>
+        <line class="buddy-seam" x1="26" y1="43" x2="94" y2="43"/>
+        <circle class="buddy-bolt" cx="28" cy="33" r="2.3"/>
+        <circle class="buddy-bolt" cx="92" cy="33" r="2.3"/>
+        <g class="buddy-eye">
+          <circle class="buddy-pupil" cx="46" cy="62" r="6.5"/>
+          <circle class="buddy-glint" cx="43.8" cy="59.6" r="1.9"/>
+        </g>
+        <g class="buddy-eye">
+          <circle class="buddy-pupil" cx="74" cy="62" r="6.5"/>
+          <circle class="buddy-glint" cx="71.8" cy="59.6" r="1.9"/>
+        </g>
+        <ellipse class="buddy-cheek" cx="30" cy="74" rx="5" ry="3.2"/>
+        <ellipse class="buddy-cheek" cx="90" cy="74" rx="5" ry="3.2"/>
+        <path class="buddy-mouth m-neutral" d="M55 78 H65"/>
+        <path class="buddy-mouth m-happy" d="M53 75 Q60 84 67 75"/>
+        <path class="buddy-mouth m-worried" d="M53 82 Q60 73 67 82"/>
+        <rect class="buddy-paw" x="30" y="86" width="28" height="22" rx="11"/>
+        <rect class="buddy-paw" x="62" y="86" width="28" height="22" rx="11"/>
       </svg>
     </div>
     <div class="logo-wordmark">BLACKBOX</div>
@@ -160,7 +190,7 @@
     </div>
   </div>
 </div>  <!-- VOICE NOTES PANEL (full-screen sheet) -->
-<div id="voiceModal" class="modal hidden">
+<div id="voiceModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Voice notes">
   <div class="modal-backdrop"></div>
   <div class="modal-box voice-panel">
     <div class="modal-topbar">
@@ -171,10 +201,26 @@
     </div>
     <div class="modal-body-flex voice-body">
       <div class="voice-rec-row">
-        <button type="button" class="modal-save" id="voiceRecordBtn">Record</button>
-        <span id="voiceRecStatus" class="file-meta"></span>
+        <button type="button" class="rec-btn" id="voiceRecordBtn" aria-pressed="false">
+          <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0014 0"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          <span id="voiceRecLabel">Record</span>
+        </button>
+        <button type="button" class="tool-btn secondary rec-pause hidden" id="voicePauseBtn" aria-label="Pause recording">Pause</button>
+        <div class="rec-meter" id="voiceRecMeter" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <span class="rec-time" id="voiceRecTime">0:00</span>
       </div>
-      <div class="voice-list" id="voiceList" style="margin-top:0.8rem"></div>
+      <span id="voiceRecStatus" class="file-meta">Ready</span>
+      <div class="voice-rec-actions hidden" id="voiceRecActions">
+        <button type="button" class="tool-btn secondary" id="voicePreviewBtn">Preview</button>
+        <button type="button" class="tool-btn" id="voiceSaveBtn">Save note</button>
+        <button type="button" class="tool-btn secondary" id="voiceDiscardBtn">Discard</button>
+      </div>
+      <div class="voice-rec-note hidden" id="voiceRecNoteWrap">
+        <input type="text" id="voiceRecNote" class="form-input" placeholder="Add a note about this recording…" autocomplete="off"/>
+      </div>
+      <audio id="voicePreviewAudio" hidden></audio>
+      <input type="search" id="voiceSearch" class="voice-search" placeholder="Search voice notes…" aria-label="Search voice notes" />
+      <div class="voice-list" id="voiceList"></div>
       <audio id="voiceAudio" hidden></audio>
       <div class="modal-actions-row">
         <button type="button" class="modal-cancel" id="cancelVoiceBtn">Close</button>
@@ -330,7 +376,7 @@
       <span>BLACKBOX</span>
     </div>
     <div class="header-actions">
-      <button class="icon-btn" id="panicBtn" title="Panic mode">
+      <button class="icon-btn panic-btn" id="panicBtn" title="Panic mode" aria-label="Panic mode — hide the app behind a calculator">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
       </button>
     </div>
@@ -738,13 +784,13 @@
             <textarea id="journalBody" class="form-input form-textarea journal-textarea" placeholder="Write anything… it's encrypted."></textarea>
           </label>
           <div class="form-group">
-            <span class="form-label">Photos <span style="color:var(--text3)">(optional — encrypted with the entry)</span></span>
+            <span class="form-label">Media <span style="color:var(--text3)">(optional — photos or videos, encrypted with the entry)</span></span>
             <div class="journal-thumbs" id="journalThumbs"></div>
             <button type="button" class="tool-btn secondary" id="journalAttachBtn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              Add photo
+              Add media
             </button>
-            <input type="file" id="journalPhotoInput" accept="image/*" multiple hidden/>
+            <input type="file" id="journalPhotoInput" accept="image/*,video/*" multiple hidden/>
           </div>
           <div class="modal-actions-row">
             <button type="button" class="modal-cancel" id="cancelJournalBtn">Cancel</button>
@@ -919,6 +965,11 @@
           <div class="si-text"><strong>Self-Destruct</strong><small>Erases everything after five failed attempts</small></div>
           <label class="toggle-switch"><input type="checkbox" id="selfDestructToggle"/><span class="toggle-track"></span></label>
         </div>
+        <div class="settings-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="3" y1="8" x2="6" y2="10"/><line x1="3" y1="16" x2="6" y2="14"/><line x1="21" y1="8" x2="18" y2="10"/><line x1="21" y1="16" x2="18" y2="14"/></svg>
+          <div class="si-text"><strong>Shake to Lock</strong><small>Seals the vault when you shake the device</small></div>
+          <label class="toggle-switch"><input type="checkbox" id="shakeToggle"/><span class="toggle-track"></span></label>
+        </div>
       </div>
       <div class="settings-group">
         <div class="settings-label">Data</div>
@@ -947,19 +998,56 @@
       <div class="settings-group">
         <div class="settings-label">Appearance</div>
         <div class="settings-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+          <div class="si-text"><strong>Theme</strong><small>Light, dark, or follow system</small></div>
+          <select id="themeSelect" class="form-input" style="width:auto;padding:0.3rem 0.5rem" onchange="S.theme=this.value;_saveSett();Appearance.apply();">
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+            <option value="auto">System</option>
+          </select>
+        </div>
+        <div class="settings-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
           <div class="si-text"><strong>Living colours</strong><small>Six liquid light orbs drift and breathe behind your vault</small></div>
           <label class="toggle-switch"><input type="checkbox" id="aliveToggle"/><span class="toggle-track"></span></label>
         </div>
         <div class="settings-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          <div class="si-text"><strong>Wallpaper</strong><small>A backdrop composed for your vault</small></div>
-          <select id="wallpaperSelect" class="form-input" style="width:auto;padding:0.3rem 0.5rem">
+          <div class="si-text"><strong>Wallpaper</strong><small>Live, slowly drifting backdrops</small></div>
+          <select id="wallpaperSelect" class="form-input" style="width:auto;padding:0.3rem 0.5rem" onchange="S.wallpaper=this.value;_saveSett();Appearance.apply();">
             <option value="none">None</option>
             <option value="1">Midnight</option>
             <option value="2">Sunset</option>
             <option value="3">Ocean Fire</option>
             <option value="4">Deep Space</option>
+            <option value="5">Aurora</option>
+            <option value="6">Rose Gold</option>
+            <option value="7">Forest Glow</option>
+            <option value="8">Carbon Night</option>
+            <optgroup label="Live">
+              <option value="9">Violet Drift</option>
+              <option value="10">Nebula Bloom</option>
+              <option value="11">Ember Flow</option>
+              <option value="12">Graphite</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="settings-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/></svg>
+          <div class="si-text"><strong>UI style</strong><small>Solid, glass, or neumorphic surfaces</small></div>
+          <select id="uiStyleSelect" class="form-input" style="width:auto;padding:0.3rem 0.5rem" onchange="S.uiStyle=this.value;_saveSett();Appearance.apply();">
+            <option value="solid">Solid</option>
+            <option value="glass">Glass</option>
+            <option value="neumo">Neumorphic</option>
+          </select>
+        </div>
+        <div class="settings-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          <div class="si-text"><strong>Transcription model</strong><small>On-device Whisper variant used for voice notes</small></div>
+          <select id="voiceModelSelect" class="form-input" style="width:auto;padding:0.3rem 0.5rem" onchange="S.voiceModel=this.value;_saveSett();">
+            <option value="Xenova/whisper-tiny.en">Whisper tiny (English, ~40 MB)</option>
+            <option value="Xenova/whisper-base.en">Whisper base (English, ~75 MB)</option>
+            <option value="Xenova/whisper-tiny">Whisper tiny (multilingual, ~40 MB)</option>
           </select>
         </div>
         <button class="settings-item" id="coolTourBtn">
@@ -1082,6 +1170,13 @@
 <script src="journal.js"></script>
 <script src="auth.js"></script>
 <script src="privacy.js"></script>
+<!-- overlay.js was missing from this list entirely: the file existed and the
+     service worker cached it, but with no script tag `PrivacyOverlay` was
+     undefined at runtime, so the "Overlay Dim" toggle threw on change and
+     _lockApp() threw on its last line. Cached-but-unloaded is invisible to
+     every other check, so ui-contract now asserts every app script is loaded. -->
+<script src="overlay.js"></script>
+<script src="buddy.js"></script>
 <script src="app.js"></script>
 <script>
 if ('serviceWorker' in navigator) {

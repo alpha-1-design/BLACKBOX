@@ -230,10 +230,19 @@ const Vault = (() => {
   async function deleteNote(id) { const n = _raw(_sk('notes')); delete n[id]; _save(STORES.notes, n); }
 
   /* ── Files (legacy) ── */
-  async function saveFile(file) {
+  /** Store a file encrypted. `meta` is optional per-file data — currently the
+   *  voice-note duration (seconds) and a user note. Both are encrypted like
+   *  everything else and simply omitted when absent, so existing records and
+   *  the backup format stay compatible. */
+  async function saveFile(file, meta) {
     const b64 = await new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
     const id = Date.now().toString(), files = _raw(_sk('files'));
-    files[id] = {id, eD: await _enc(b64), eN: await _enc(file.name), size: file.size, type: file.type, ts: Date.now()};
+    const entry = {id, eD: await _enc(b64), eN: await _enc(file.name), size: file.size, type: file.type, ts: Date.now()};
+    if (meta && typeof meta.duration === 'number' && isFinite(meta.duration) && meta.duration > 0) {
+      entry.dur = Math.round(meta.duration);
+    }
+    if (meta && meta.note) entry.eNote = await _enc(String(meta.note));
+    files[id] = entry;
     _save(_sk('files'), files); return id;
   }
   async function getAllFiles() {
@@ -241,7 +250,9 @@ const Vault = (() => {
     for (const id of Object.keys(r).sort((a,b)=>r[b].ts-r[a].ts)) {
       try {
         const item = {id, name: await _dec(r[id].eN), size: r[id].size, type: r[id].type, ts: r[id].ts};
+        if (typeof r[id].dur === 'number') item.duration = r[id].dur;
         if (r[id].eTr) { try { item.transcript = await _dec(r[id].eTr); } catch {} }
+        if (r[id].eNote) { try { item.note = await _dec(r[id].eNote); } catch {} }
         out.push(item);
       } catch {}
     }

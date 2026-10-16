@@ -4,7 +4,7 @@
 // a byte-identical worker survived APK updates and kept serving the old app
 // shell forever — the 2.0.3 → 2.0.4 update froze users on stale v2.0 assets
 // and even mixed old/new JS files into one broken app.
-const VERSION = 'v2.0.13';
+const VERSION = 'v2.0.18';
 const CACHE = 'blackbox-' + VERSION;
 // Third-party runtime assets are release-independent: the transformers.js
 // speech library lives here, and transformers.js caches the ~40 MB Whisper
@@ -17,7 +17,7 @@ const CDN_CACHE = 'blackbox-cdn';
 const KEEP = new Set([CACHE, CDN_CACHE, 'transformers-cache']);
 const SHELL = ['./', './index.html', './styles.css', './app.js', './vault.js',
   './overlay.js', './shake.js', './clipboard.js', './secrets.js', './files.js', './journal.js',
-  './auth.js', './privacy.js', './updater.js', './maintenance.js',
+  './auth.js', './privacy.js', './updater.js', './buddy.js',
   './appearance.js', './cool.js', './voice.js',
   './generator.js', './health.js',
   './service-worker.js', './manifest.json', './assets/icon.svg'];

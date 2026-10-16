@@ -64,6 +64,7 @@ const PasswordGen = (() => {
     document.getElementById('openGenBtn')?.addEventListener('click', () => open());
     document.getElementById('secretGenBtn')?.addEventListener('click', () => open({ forSecret: true }));
     document.getElementById('closeGenModal')?.addEventListener('click', close);
+    document.querySelector('#genModal .modal-backdrop')?.addEventListener('click', close);
     ['genUpper', 'genLower', 'genDigit', 'genSymbol'].forEach(id =>
       document.getElementById(id)?.addEventListener('change', _render));
     document.getElementById('genLength')?.addEventListener('input', _render);
@@ -111,12 +112,10 @@ const PasswordGen = (() => {
   async function _copy() {
     const out = document.getElementById('genOutput');
     if (!out || !out.value) return;
-    try {
-      await navigator.clipboard.writeText(out.value);
-      toast('Copied to clipboard');
-    } catch (e) {
-      toast('Copy failed — grant clipboard permission', true);
-    }
+    // A generated password is the most sensitive thing here — it purges on the
+    // same 30-second schedule as every other copy (see EncClipboard.copy).
+    const res = await EncClipboard.copy(out.value);
+    toast(EncClipboard.copyMessage(res), !res.ok);
   }
 
   function _use() {

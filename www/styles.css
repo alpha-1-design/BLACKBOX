@@ -1,19 +1,125 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* ═══════════════════════════════════════════════════════════════════════
+   THEME TOKENS — three sources, in cascade order (least → most specific):
+
+     1. :root                         light palette + light glass/neumo tokens.
+                                      Always present, so a var() can never be
+                                      "invalid at computed-value time" (which
+                                      would blank a surface on first paint)
+                                      before appearance.js has run.
+     2. @media (prefers-color-scheme) html:not([data-theme])
+                                      the OS default, only until an explicit
+                                      choice is applied.
+     3. html[data-theme="dark"|"light"]
+                                      the authoritative user choice.
+
+   Why the choice moved from body to <html>: the old `body.theme-dark` block
+   could never theme <html> itself (--bg resolved on body only), so the dark
+   palette was applied to a subtree while the root painted light — and there
+   was no `.theme-light` rule at all, so picking "Light" on a dark-OS device
+   silently did nothing. The attribute selector also lets the explicit choice
+   beat the media query, which the old class never could.
+   ═══════════════════════════════════════════════════════════════════════ */
 :root{
   --bg:#fafafa;--bg2:#f3f3f5;--bg3:#ececef;
   --surface:#fff;--surface2:#f7f7f9;
   --border:rgba(0,0,0,0.06);--border2:rgba(0,0,0,0.1);
   --accent:#111;--accent2:#333;
   --accent-dim:rgba(0,0,0,0.04);--accent-dim2:rgba(0,0,0,0.02);
+  /* Foreground that sits ON an accent / muted / vivid fill. The dark accent is
+     near-white, so a hardcoded `#fff` made Save buttons, active pills, active
+     tabs, the toggle knob, .play-btn and toasts invisible in dark mode. */
+  --on-accent:#fff;
+  --on-text:#fff;
+  --on-vivid:#fff;
   --red:#d9304e;--red-dim:rgba(217,48,78,0.06);
   --yellow:#d97706;--yellow-dim:rgba(217,119,6,0.06);
   --green:#1a8917;--green-dim:rgba(26,137,23,0.06);
   --text:#111;--text2:#6b6b76;--text3:#a1a1aa;
+  /* Decoy calculator sheet (was hardcoded light -> invisible in dark mode) */
+  --panic-bg:#f2f2f7;
+  /* Glass */
+  --glass-bg:rgba(255,255,255,0.55);
+  --glass-bg2:rgba(255,255,255,0.72);
+  --glass-panel:rgba(250,250,252,0.82);
+  --glass-line:rgba(255,255,255,0.55);
+  --glass-edge:rgba(255,255,255,0.95);
+  --glass-shadow:0 12px 40px rgba(16,20,38,0.13);
+  --glass-blur:20px;
+  --ambient-mesh:radial-gradient(circle at 18% 12%,rgba(167,139,250,0.34) 0%,transparent 55%),radial-gradient(circle at 82% 18%,rgba(244,114,182,0.34) 0%,transparent 55%),radial-gradient(circle at 30% 88%,rgba(56,189,248,0.34) 0%,transparent 55%),radial-gradient(circle at 88% 82%,rgba(251,191,36,0.34) 0%,transparent 55%),linear-gradient(160deg,#f7f7fb,#eef0f6 60%,#e9ecf4);
+  /* Neumorphism */
+  --neu-bg:#eceef2;
+  --neu-dark:rgba(158,170,190,0.55);
+  --neu-light:rgba(255,255,255,0.95);
+  --neu-shadow:6px 6px 14px var(--neu-dark),-6px -6px 14px var(--neu-light);
+  --neu-inset:inset 4px 4px 9px var(--neu-dark),inset -4px -4px 9px var(--neu-light);
   --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;--mono:'SF Mono','Cascadia Code','JetBrains Mono',monospace;
   --r:14px;--rs:10px;
   --hh:52px;--nh:62px;
   --ease:cubic-bezier(0.4,0,0.2,1);
 }
+
+/* OS default — applies only while no explicit choice is on <html>. */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) {
+    --bg:#0a0a0f;--bg2:#14141f;--bg3:#1f1f2e;
+    --surface:#13131c;--surface2:#1a1a26;
+    --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+    --accent:#f5f5f7;--accent2:#d4d4dc;
+    --accent-dim:rgba(255,255,255,0.06);--accent-dim2:rgba(255,255,255,0.03);
+    --on-accent:#0a0a0f;--on-text:#0a0a0f;--on-vivid:#0b0f14;
+    --red:#ff4d6d;--red-dim:rgba(255,77,109,0.1);
+    --yellow:#fbbf24;--yellow-dim:rgba(251,191,36,0.1);
+    --green:#34d399;--green-dim:rgba(52,211,153,0.1);
+    --text:#f5f5f7;--text2:#a8a8b8;--text3:#6e6e80;
+    --panic-bg:#0d0d14;
+    --glass-bg:rgba(26,26,40,0.50);
+    --glass-bg2:rgba(32,32,48,0.66);
+    --glass-panel:rgba(14,14,22,0.76);
+    --glass-line:rgba(255,255,255,0.14);
+    --glass-edge:rgba(255,255,255,0.22);
+    --glass-shadow:0 14px 44px rgba(0,0,0,0.55);
+    --glass-blur:22px;
+    --ambient-mesh:radial-gradient(circle at 18% 12%,rgba(124,58,237,0.36) 0%,transparent 55%),radial-gradient(circle at 82% 18%,rgba(236,72,153,0.36) 0%,transparent 55%),radial-gradient(circle at 30% 88%,rgba(6,182,212,0.36) 0%,transparent 55%),radial-gradient(circle at 88% 82%,rgba(245,158,11,0.3) 0%,transparent 55%),linear-gradient(160deg,#0b0b12,#0e0e18 60%,#101020);
+    --neu-bg:#15151f;
+    --neu-dark:rgba(0,0,0,0.68);
+    --neu-light:rgba(255,255,255,0.07);
+  }
+}
+
+/* The explicit choice. Beats :root by specificity, and beats the media query
+   because that block is scoped to html:not([data-theme]). */
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0a0a0f;--bg2:#14141f;--bg3:#1f1f2e;
+  --surface:#13131c;--surface2:#1a1a26;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --accent:#f5f5f7;--accent2:#d4d4dc;
+  --accent-dim:rgba(255,255,255,0.06);--accent-dim2:rgba(255,255,255,0.03);
+  --on-accent:#0a0a0f;--on-text:#0a0a0f;--on-vivid:#0b0f14;
+  --red:#ff4d6d;--red-dim:rgba(255,77,109,0.1);
+  --yellow:#fbbf24;--yellow-dim:rgba(251,191,36,0.1);
+  --green:#34d399;--green-dim:rgba(52,211,153,0.1);
+  --text:#f5f5f7;--text2:#a8a8b8;--text3:#6e6e80;
+  --panic-bg:#0d0d14;
+  --glass-bg:rgba(26,26,40,0.50);
+  --glass-bg2:rgba(32,32,48,0.66);
+  --glass-panel:rgba(14,14,22,0.76);
+  --glass-line:rgba(255,255,255,0.14);
+  --glass-edge:rgba(255,255,255,0.22);
+  --glass-shadow:0 14px 44px rgba(0,0,0,0.55);
+  --glass-blur:22px;
+  --ambient-mesh:radial-gradient(circle at 18% 12%,rgba(124,58,237,0.36) 0%,transparent 55%),radial-gradient(circle at 82% 18%,rgba(236,72,153,0.36) 0%,transparent 55%),radial-gradient(circle at 30% 88%,rgba(6,182,212,0.36) 0%,transparent 55%),radial-gradient(circle at 88% 82%,rgba(245,158,11,0.3) 0%,transparent 55%),linear-gradient(160deg,#0b0b12,#0e0e18 60%,#101020);
+  --neu-bg:#15151f;
+  --neu-dark:rgba(0,0,0,0.68);
+  --neu-light:rgba(255,255,255,0.07);
+}
+html[data-theme="light"]{ color-scheme:light }
+/* The root paints the canvas, so its background must follow the UI mode too:
+   in soft-UI the page colour IS the surface colour. */
+html[data-ui="neumo"]{background:var(--neu-bg)}
+html[data-ui="glass"]{background:var(--bg)}
+
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;-webkit-font-smoothing:antialiased;overflow:hidden;user-select:none}
 
 /* LOCK SCREEN */
@@ -39,8 +145,64 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 @keyframes appIn{from{opacity:0;transform:scale(1.03)}to{opacity:1;transform:scale(1)}}
 .lock-canvas{position:absolute;inset:0;pointer-events:none;opacity:0}
 .lock-content{position:relative;display:flex;flex-direction:column;align-items:center;gap:1.2rem;width:100%;max-width:280px}
-.app-logo{display:flex;align-items:center;justify-content:center;margin-bottom:0.5rem}
-.logo-icon{color:var(--accent);opacity:0.85}
+.app-logo{display:flex;align-items:center;justify-content:center;margin-bottom:0.2rem}
+
+/* ── LOCK-SCREEN CHARACTER ────────────────────────────────────────────────
+   A little black box that shuts its eyes with its paws while a PIN is being
+   typed and peeks again once you stop. State classes (.is-idle/is-shielding/
+   is-happy/is-worried) are owned by buddy.js; every animation here is
+   transform or opacity only, so it stays on the compositor.
+   The body/eyes are painted from --text and --bg, so the character is legible
+   in both themes without a second asset. */
+.pin-buddy{width:112px;height:108px;display:block;transform-origin:50% 90%;animation:buddyBreathe 4.6s ease-in-out infinite}
+@keyframes buddyBreathe{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-2.5px) scale(1.015)}}
+.pin-buddy .buddy-body{fill:var(--text)}
+/* A slightly inset panel behind the face, like a screen set into a bezel. It
+   stops the eyes from floating on a flat slab, and it is what makes the
+   --bg eyes read as cut-outs in both themes instead of just holes. */
+.pin-buddy .buddy-face{fill:var(--bg);opacity:0.14}
+/* Lid seam plus two corner bolts: the hardware that makes it read as an object
+   rather than a rounded rectangle. Deliberately low-contrast — texture, not
+   detail competing with the face. */
+.pin-buddy .buddy-seam{stroke:var(--bg);stroke-width:2;opacity:0.22}
+.pin-buddy .buddy-bolt{fill:var(--bg);opacity:0.22}
+.pin-buddy .buddy-stem{stroke:var(--text);stroke-width:3;stroke-linecap:round}
+/* The antenna LED is the only accent-coloured thing on the lock screen, and it
+   doubles as a status light: it breathes while idle and quickens while the key
+   is being derived (see .lock-content.verifying below), so the character is
+   visibly *working* during the PBKDF2 gap. Halo is a stroked ring rather than a
+   drop-shadow filter — a per-frame blur is exactly what drops frames on a
+   low-end phone. */
+.pin-buddy .buddy-led{fill:var(--accent);animation:buddyLed 3.4s ease-in-out infinite}
+.pin-buddy .buddy-led-halo{fill:none;stroke:var(--accent);stroke-width:1.6;opacity:0.3;animation:buddyLed 3.4s ease-in-out infinite}
+@keyframes buddyLed{0%,100%{opacity:1}50%{opacity:0.45}}
+/* The eye is a group so the pupil AND its glint blink together. */
+.pin-buddy .buddy-eye{transform-box:fill-box;transform-origin:center;animation:buddyBlink 5.6s ease-in-out infinite}
+.pin-buddy .buddy-pupil{fill:var(--bg)}
+/* Highlight inside the eye, in the body colour — so it is a dark spark on a
+   light eye in light mode and a light one on a dark eye in dark mode. */
+.pin-buddy .buddy-glint{fill:var(--text)}
+@keyframes buddyBlink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(0.12)}}
+.pin-buddy .buddy-cheek{fill:var(--bg);opacity:0;transition:opacity 0.35s var(--ease)}
+.pin-buddy .buddy-mouth{stroke:var(--bg);fill:none;stroke-width:2.6;stroke-linecap:round;opacity:0;transition:opacity 0.25s var(--ease)}
+.pin-buddy.is-idle .m-neutral,.pin-buddy.is-shielding .m-neutral{opacity:1}
+.pin-buddy.is-happy .m-happy{opacity:1}
+.pin-buddy.is-worried .m-worried{opacity:1}
+.pin-buddy.is-happy .buddy-cheek{opacity:0.55}
+/* Paws rest below the face and rise to cover the eyes. The springy easing is
+   the whole point: it reads as an eager little character, not a state toggle. */
+.pin-buddy .buddy-paw{fill:var(--text);stroke:var(--bg);stroke-width:2.5;transition:transform 0.42s cubic-bezier(0.34,1.56,0.64,1)}
+.pin-buddy.is-shielding .buddy-paw{transform:translateY(-38px)}
+/* A small "hands up" on a wrong PIN, paired with the existing pad shake. */
+.pin-buddy.is-worried .buddy-paw{transform:translateY(-6px)}
+@media (prefers-reduced-motion: reduce){
+  .pin-buddy,.pin-buddy .buddy-eye,.pin-buddy .buddy-led,.pin-buddy .buddy-led-halo{animation:none}
+  .pin-buddy .buddy-paw,.pin-buddy .buddy-mouth,.pin-buddy .buddy-cheek{transition:none}
+}
+/* .logo-icon was removed here rather than left behind: the lock-screen mark is
+   now the character (.pin-buddy), which occupies the same slot in .app-logo, so
+   the rule could never match again. ci/ui-contract.js asserts reachability —
+   orphaned CSS is how the voice recorder shipped as a visible stub. */
 .logo-wordmark{font-size:1.1rem;font-weight:700;letter-spacing:0.12em;color:var(--text)}
 .lock-status-row{display:flex;align-items:center;justify-content:space-between;width:100%}
 .lock-badge{font-family:var(--mono);font-size:0.6rem;color:var(--text3);letter-spacing:0.08em}
@@ -51,6 +213,15 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .pin-dot.filled:active{transform:scale(1.1)}
 .pin-dot.error{background:var(--red);border-color:var(--red);animation:dotPulse 0.45s ease}
 @keyframes dotPulse{0%,100%{transform:scale(1.25)}50%{transform:scale(0.85)}}
+/* Deriving the key (PBKDF2) leaves a real gap between the 4th digit and either
+   outcome. Without this the pad looks like the tap never registered. Cleared on
+   every exit path by _checkPin(), with a watchdog behind it. */
+.lock-content.verifying .pin-display .pin-dot{animation:dotPulse 0.6s ease-in-out infinite}
+.lock-content.verifying .numpad{opacity:0.45;transition:opacity 0.15s var(--ease)}
+.lock-content.verifying .num-key{pointer-events:none}
+/* The character's LED quickens while the key is derived: the pad dimming says
+   "working", the light says "thinking". */
+.lock-content.verifying .buddy-led,.lock-content.verifying .buddy-led-halo{animation-duration:0.55s}
 .pin-error{font-family:var(--mono);font-size:0.7rem;color:var(--red);min-height:16px;letter-spacing:0.02em}
 .lockout-timer{font-family:var(--mono);font-size:0.8rem;color:var(--yellow);text-align:center;padding:0.5rem 0.8rem;background:var(--yellow-dim);border-radius:var(--rs);width:100%}
 .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
@@ -66,7 +237,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 @keyframes bioPulse{0%{transform:scale(1)}40%{transform:scale(0.94);opacity:0.5}100%{transform:scale(1)}}
 
 /* PANIC CALCULATOR */
-.panic-overlay{position:fixed;inset:0;z-index:900;background:#f2f2f7;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2rem}
+.panic-overlay{position:fixed;inset:0;z-index:900;background:var(--panic-bg);color:var(--text);display:flex;align-items:flex-end;justify-content:center;padding-bottom:2rem}
 .panic-content{width:100%;max-width:360px;padding:0 1rem}
 .calc-title{font-size:1.8rem;font-weight:300;color:var(--text);text-align:right;margin-bottom:0.3rem}
 .calc-display{font-size:3rem;font-weight:300;color:var(--text);text-align:right;padding:0.4rem 0.3rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:0.8rem}
@@ -74,7 +245,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .calc-btn{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:50%;aspect-ratio:1;font-size:1.15rem;cursor:pointer;transition:opacity 0.1s;display:flex;align-items:center;justify-content:center}
 .calc-btn:active{opacity:0.5}
 .calc-btn.op{background:var(--bg2)}
-.calc-btn.accent{background:var(--accent);color:#fff;border-color:var(--accent)}
+.calc-btn.accent{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .calc-btn.wide{border-radius:40px;aspect-ratio:unset;padding:0 1.5rem;grid-column:span 2;justify-content:flex-start}
 .calc-exit-hint{font-family:var(--mono);font-size:0.55rem;color:var(--text3);text-align:center;margin-top:1rem;opacity:0.4}
 
@@ -91,7 +262,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .panic-btn{background:var(--red-dim);border-color:rgba(217,48,78,0.12);color:var(--red)}
 
 /* BOTTOM NAV */
-.bottom-nav{height:var(--nh);display:flex;align-items:center;background:var(--surface);border-top:1px solid var(--border);padding:0 0.2rem;flex-shrink:0;z-index:10}
+.bottom-nav{height:calc(var(--nh) + env(safe-area-inset-bottom,0px));display:flex;align-items:center;background:var(--surface);border-top:1px solid var(--border);padding:0 0.2rem env(safe-area-inset-bottom,0px);flex-shrink:0;position:relative;z-index:10}
 .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--text3);font-family:var(--font);font-size:0.55rem;font-weight:500;padding:7px 2px;border-radius:var(--rs);cursor:pointer;transition:color 0.15s;-webkit-tap-highlight-color:transparent}
 .nav-btn.active{color:var(--accent)}
 .nav-btn svg{transition:stroke 0.15s}
@@ -137,7 +308,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .toggle-track{position:absolute;inset:0;background:var(--bg3);border-radius:22px;transition:all 0.2s var(--ease)}
 .toggle-track::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--text3);transition:all 0.2s var(--ease)}
 .toggle-switch input:checked+.toggle-track{background:var(--accent)}
-.toggle-switch input:checked+.toggle-track::after{background:#fff;transform:translateX(18px)}
+.toggle-switch input:checked+.toggle-track::after{background:var(--on-accent);transform:translateX(18px)}
 
 /* CLIPBOARD SECTION */
 .clipboard-section{display:flex;flex-direction:column;gap:8px}
@@ -145,7 +316,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .clip-input:focus{border-color:var(--border2)}
 .clip-input::placeholder{color:var(--text3)}
 .clip-actions{display:flex;gap:7px}
-.clip-btn{flex:1;background:var(--accent);border:none;border-radius:var(--rs);color:#fff;font-family:var(--font);font-size:0.75rem;font-weight:500;padding:0.5rem;cursor:pointer;transition:opacity 0.15s}
+.clip-btn{flex:1;background:var(--accent);border:none;border-radius:var(--rs);color:var(--on-accent);font-family:var(--font);font-size:0.75rem;font-weight:500;padding:0.5rem;cursor:pointer;transition:opacity 0.15s}
 .clip-btn:active{opacity:0.7}
 .clip-btn.secondary{background:var(--surface);border:1px solid var(--border);color:var(--text2)}
 .clip-status{font-family:var(--mono);font-size:0.65rem;color:var(--text3);min-height:14px}
@@ -165,7 +336,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 /* ── SCROLL-DRIVEN PATTERN (the signature premium interaction) ──
    Taps trigger a measured down → ripple → spring-back. Trained on
    Uber / banking / food-ordering apps: every tap feels like it has mass. */
-.pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.pill.active{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 
 /* SECRETS LIST */
 .secrets-list{display:flex;flex-direction:column;gap:6px}
@@ -178,7 +349,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .secret-item-meta{display:flex;align-items:center;justify-content:space-between;margin-top:0.4rem}
 .secret-item-date{font-size:0.62rem;color:var(--text3)}
 .secret-item-actions{display:flex;gap:4px}
-.secret-action-btn{background:none;border:none;color:var(--text3);cursor:pointer;padding:3px;transition:color 0.15s}
+ .secret-action-btn{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border);border-radius:var(--rs);background:var(--surface);color:var(--text2);cursor:pointer;padding:0.35rem 0.55rem;font-size:0.72rem;font-weight:500;transition:all 0.15s}
+.secret-action-btn:hover{color:var(--text);background:var(--bg2)}
+.secret-action-btn:active{transform:scale(0.96)}
+.secret-action-btn.delete:active{color:var(--red)}
 .secret-action-btn:active{color:var(--accent)}
 .secret-action-btn.delete:active{color:var(--red)}
 .value-hidden{letter-spacing:0.15em}
@@ -233,7 +407,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(2px)}
 /* Full-screen panel: edge-to-edge, top bar + scrolling body + anchored action
    row. This is the "open it as a real panel" behavior, not a centered dialog. */
-.modal-box{position:relative;z-index:1;width:100%;max-width:none;height:100%;max-height:none;background:var(--bg);border:none;border-radius:0;box-shadow:none;display:flex;flex-direction:column;animation:panelIn 0.22s var(--ease)}
+.modal-box{position:relative;z-index:1;width:100%;max-width:none;height:100%;max-height:none;background:var(--bg);border:none;border-radius:0;box-shadow:none;display:flex;flex-direction:column;animation:panelIn 0.22s var(--ease);padding-bottom:env(safe-area-inset-bottom,0px)}
 /* Small confirm/prompt dialogs stay compact — a full screen for "Are you sure?"
    would be worse UX. Everything else opens as a full panel. */
 #deleteModal,#promptModal{padding:1rem}
@@ -256,28 +430,25 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .modal-body-scroll > *:first-child{margin-top:0}
 .modal-body-scroll > *:last-child{margin-bottom:0}
 /* Forms are their own scroll area so the action row can anchor below them */
-.modal-box > .modal-form{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0.9rem 1rem}
+.modal-box > .modal-form{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0.9rem 1rem calc(0.9rem + env(safe-area-inset-bottom,0px))}
 /* Save/primary stays reachable: sticky at the bottom of the scroll area.
    Short forms sit naturally at the panel foot; long ones pin instead of
    drifting under the bottom nav. */
 .modal-body-scroll > .modal-actions-row,
 .modal-form > .modal-actions-row{position:sticky;bottom:0;z-index:2;box-shadow:0 -8px 18px rgba(0,0,0,0.06)}
 
-/* Anchored action bar: primary/Save does not sit on the sheet seam */
-.modal-action-bar{display:flex;flex-direction:column;gap:8px;padding:0.8rem 1rem 1rem;border-top:1px solid var(--border);background:var(--bg);margin-top:auto}
-.modal-action-bar+.modal-action-bar{border-top:none;padding-top:0.8rem}
-.modal-actions-row{display:flex;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:0.55rem 0.5rem}
+.modal-actions-row{display:flex;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:0.55rem 0.5rem;margin-bottom:env(safe-area-inset-bottom,0px)}
 .modal-actions-row > *{flex:1}
 
 /* Reuse existing buttons cleanly inside the new bar shape */
 .modal-cancel{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);color:var(--text2);font-family:var(--font);font-size:0.82rem;font-weight:500;padding:0.6rem;cursor:pointer;transition:all 0.15s}
 .modal-cancel:active{background:var(--bg2)}
-.modal-cancel.danger-btn{background:var(--red);border-color:var(--red);color:#fff}
+.modal-cancel.danger-btn{background:var(--red);border-color:var(--red);color:var(--on-vivid)}
 .modal-cancel.danger-btn:active{background:var(--red-dim)}
-.modal-save{flex:1;background:var(--accent);border:none;border-radius:var(--rs);color:#fff;font-family:var(--font);font-size:0.82rem;font-weight:500;padding:0.6rem;cursor:pointer;transition:opacity 0.15s,transform 0.15s;position:relative;overflow:hidden}
+.modal-save{flex:1;background:var(--accent);border:none;border-radius:var(--rs);color:var(--on-accent);font-family:var(--font);font-size:0.82rem;font-weight:500;padding:0.6rem;cursor:pointer;transition:opacity 0.15s,transform 0.15s;position:relative;overflow:hidden}
 .modal-save:active{transform:scale(0.98)}
-.modal-save.in-progress{pointer-events:none;opacity:0.85}
-.modal-actions-row:has(.modal-save[disabled]){opacity:0.55;pointer-events:none}
+
+
 
 /* Optional more menu (inline dropdown, no extra libs) */
 .modal-more-menu{position:absolute;top:100%;right:1rem;margin-top:6px;min-width:170px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--rs);box-shadow:0 10px 30px rgba(0,0,0,0.16);padding:6px;z-index:5;display:none}
@@ -302,7 +473,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .value-input-wrap .form-input{padding-right:2.5rem}
 .toggle-vis{position:absolute;right:0.5rem;background:none;border:none;color:var(--text3);cursor:pointer;padding:4px}
 .modal-actions-row{display:flex;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:0.55rem 0.5rem}
-.modal-actions-row:has(.modal-save[disabled]){opacity:0.55;pointer-events:none}
+
 .modal-cancel{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);color:var(--text2);font-family:var(--font);font-size:0.82rem;font-weight:500;padding:0.6rem;cursor:pointer;transition:all 0.15s}
 .modal-cancel:active{background:var(--bg2)}
 
@@ -314,9 +485,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
      like a check being written, followed by a checkmark that bobs
      ~1.5s (spring) and settles.
    - Wave primer: works on tap, long-press, and keyboard Enter. */
-.modal-save{flex:1;background:var(--accent);border:none;border-radius:var(--rs);color:#fff;font-family:var(--font);font-size:0.82rem;font-weight:500;padding:0.6rem;cursor:pointer;transition:opacity 0.15s,transform 0.15s;position:relative;overflow:hidden}
+.modal-save{flex:1;background:var(--accent);border:none;border-radius:var(--rs);color:var(--on-accent);font-family:var(--font);font-size:0.82rem;font-weight:500;padding:0.6rem;cursor:pointer;transition:opacity 0.15s,transform 0.15s;position:relative;overflow:hidden}
 .modal-save:active{transform:scale(0.98)}
-.modal-save.in-progress{pointer-events:none;opacity:0.85}
+
 
 /* PRIVACY GRID */
 .privacy-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -334,7 +505,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .tool-input{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-family:var(--mono);font-size:0.78rem;padding:0.65rem 0.8rem;outline:none;user-select:text;resize:none;min-height:60px;width:100%}
 .tool-input:focus{border-color:var(--border2)}
 .tool-input::placeholder{color:var(--text3)}
-.tool-btn{background:var(--accent);border:none;border-radius:var(--rs);color:#fff;font-family:var(--font);font-size:0.78rem;font-weight:500;padding:0.55rem 1rem;cursor:pointer;transition:opacity 0.15s;display:flex;align-items:center;justify-content:center;gap:5px}
+.tool-btn{background:var(--accent);border:none;border-radius:var(--rs);color:var(--on-accent);font-family:var(--font);font-size:0.78rem;font-weight:500;padding:0.55rem 1rem;cursor:pointer;transition:opacity 0.15s;display:flex;align-items:center;justify-content:center;gap:5px}
 .tool-btn:active{opacity:0.7}
 .tool-btn.secondary{background:var(--surface);border:1px solid var(--border);color:var(--text2)}
 .tool-result{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:0.8rem}
@@ -367,9 +538,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .si-arrow{color:var(--text3)}
 
 /* TOAST */
-.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:9px 16px;border-radius:8px;font-size:0.75rem;font-family:var(--font);z-index:1300;white-space:nowrap;animation:fadeInUp 0.2s ease}
-.toast.green{background:var(--green);color:#fff}
-.toast.red{background:var(--red);color:#fff}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--on-text);padding:9px 16px;border-radius:8px;font-size:0.75rem;font-family:var(--font);z-index:1300;white-space:nowrap;animation:fadeInUp 0.2s ease}
+.toast.green{background:var(--green);color:var(--on-vivid)}
+.toast.red{background:var(--red);color:var(--on-vivid)}
 @keyframes fadeInUp{from{opacity:0;transform:translateX(-50%) translateY(6px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 
 /* SCROLLBAR */
@@ -389,39 +560,50 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
 .shake{animation:shake 0.35s ease}
 
-.voice-rec .mic-dot{animation:micDotPulse 0.8s ease-in-out infinite}
-.voice-rec .record-btn{color:var(--accent)}
-.voice-rec .record-btn .dot{fill:#111}
-.voice-rec .status-text{color:var(--accent)}
-@keyframes micDotPulse{
-  0%{opacity:0.9;transform:scale(1)}
-  30%{opacity:1;transform:scale(1.1)}
-  60%{opacity:0.6;transform:scale(0.92)}
-  100%{opacity:0.9;transform:scale(1)}
-}
-@keyframes recordHalo{
-  0%{transform:scale(1);opacity:0.5}
-  50%{transform:scale(1.35);opacity:0.85}
-  100%{transform:scale(1);opacity:0.5}
-}
-.voice-rec .record-btn{animation:recordHalo 1.1s ease-in-out infinite}
-.voice-rec .status-text{animation:pulseFade 0.9s ease-in-out infinite}
-@keyframes pulseFade{
-  0%,100%{opacity:0.5}
-  50%{opacity:1}
-}
-/* Capture "release" exit: clears the recording pulse and snaps the dot to a
-   steady fill, so the animation frames die cleanly when the capture ends. */
-.exit-rec .mic-dot{fill:#111;animation:none;opacity:1}
-.exit-rec .record-btn{animation:none;opacity:0.5}
-.exit-rec .status-text{animation:none}
+/* ── VOICE RECORDER ──────────────────────────────────────────────────────
+   This surface used to be entirely orphaned CSS: every rule keyed off
+   .record-btn / .status-text / .mic-dot / .exit-rec, none of which existed in
+   the markup (the button was .modal-save, the status .file-meta). So the
+   Record button never turned red, no halo ever pulsed and the timer was
+   unstyled — the whole recorder read as a stub. Markup, JS and CSS now share
+   one set of class names, and ci/ui-contract.js asserts that contract. */
+.voice-rec-row{display:flex;align-items:center;gap:10px}
+.rec-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:9px;min-height:52px;padding:0.7rem 1.1rem;border:none;border-radius:var(--rs);background:var(--accent);color:var(--on-accent);font-family:var(--font);font-size:0.95rem;font-weight:700;cursor:pointer;transition:transform 0.12s var(--ease),background 0.2s var(--ease);-webkit-tap-highlight-color:transparent}
+.rec-btn:active{transform:scale(0.97)}
+.rec-btn:disabled{opacity:0.55;cursor:not-allowed}
+.rec-btn .mic-icon{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.rec-btn.is-recording{background:var(--red);color:var(--on-vivid)}
+.rec-btn.is-paused{background:var(--yellow);color:var(--on-vivid)}
+.rec-btn.is-recording .mic-icon{animation:recPulse 1.15s ease-in-out infinite}
+@keyframes recPulse{0%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.16)}100%{opacity:1;transform:scale(1)}}
+/* Live input level, driven from an AnalyserNode — visible proof the mic is
+   actually capturing, which the timer alone never gave. */
+.rec-meter{display:flex;align-items:flex-end;gap:2px;height:26px;flex-shrink:0}
+.rec-meter span{width:3px;height:10%;border-radius:2px;background:var(--accent);opacity:0.45;transition:height 0.07s linear,opacity 0.07s linear}
+.rec-meter.is-live span{opacity:1}
+.rec-time{font-family:var(--mono);font-size:0.78rem;color:var(--text2);font-variant-numeric:tabular-nums;min-width:5ch;text-align:right;flex-shrink:0}
+.rec-time.is-live{color:var(--red)}
+.rec-time.is-paused{color:var(--yellow)}
+/* Compact pause/resume control that appears beside Record while a take is live */
+.rec-pause{flex:0 0 auto;width:46px;min-width:46px;min-height:52px;padding:0;font-size:0.72rem}
+/* Review state: audition the take, annotate it, then save or discard. */
+.voice-rec-actions{display:flex;flex-wrap:wrap;gap:8px}
+.voice-rec-actions .tool-btn{flex:1 1 calc(50% - 4px)}
+/* List row extras */
+.voice-dur{font-family:var(--mono);font-size:0.62rem;color:var(--text3)}
+.voice-note{font-size:0.74rem;color:var(--text2);line-height:1.5;margin-top:0.4rem;white-space:pre-wrap}
+.voice-transcript-toggle{background:none;border:none;color:var(--accent);font-family:var(--font);font-size:0.7rem;font-weight:600;padding:0.35rem 0;cursor:pointer;text-align:left}
+@media (prefers-reduced-motion: reduce){.rec-btn.is-recording .mic-icon{animation:none}}
 
 /* Voice panel: inherits the full-screen panel base */
 .modal-box.voice-panel{max-width:none;max-height:none;border-radius:0}
 .voice-body{flex:1;display:flex;flex-direction:column;gap:0.8rem;min-height:0;padding:0.9rem 1rem}
 .voice-body > .modal-actions-row{flex-shrink:0}
-.voice-rec-row{display:flex;align-items:center;gap:10px}
-.voice-list{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.voice-list{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:8px;padding-right:2px}
+
+.voice-search{width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-family:var(--font);font-size:0.85rem;padding:0.55rem 0.75rem;outline:none;transition:border-color 0.15s}
+.voice-search:focus{border-color:var(--accent)}
+.voice-search::placeholder{color:var(--text3)}
 
 /* Voice model progress panel (appears over the voice panel while a model downloads/transcribes) */
 #voiceProgressPanel{position:fixed;left:50%;bottom:1.5rem;transform:translateX(-50%);z-index:1250;width:min(420px,calc(100vw - 2rem))}
@@ -441,14 +623,15 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 
 /* DIALOGS (in-app alert/confirm/prompt replacements) */
-.danger-btn{background:var(--red)!important;color:#fff!important;border-color:var(--red)!important}
+.danger-btn{background:var(--red)!important;color:var(--on-vivid)!important;border-color:var(--red)!important}
 .confirm-msg{font-size:0.85rem;color:var(--text2);line-height:1.5;margin-bottom:1rem}
-.info-body{max-height:55vh;overflow-y:auto;font-size:0.84rem;color:var(--text2);line-height:1.55;user-select:text}
+/* No max-height/overflow here: .modal-body-scroll already scrolls, so the FAQ
+   and Privacy Policy were rendering two nested scroll regions. */
+.info-body{font-size:0.84rem;color:var(--text2);line-height:1.55;user-select:text}
 .faq-item{margin-bottom:0.9rem;padding-bottom:0.9rem;border-bottom:1px solid var(--border)}
 .faq-item:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
 .faq-item strong{display:block;color:var(--text);font-size:0.86rem;margin-bottom:3px}
 .faq-item p{margin:0;white-space:pre-line}
-.setup-hint{font-size:0.72rem;color:var(--text3);text-align:center;margin:-0.4rem 0 0.6rem}
 
 /* FILES + PACKAGES */
 .files-section{margin-top:0.8rem}
@@ -460,13 +643,22 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .file-info{display:flex;flex-direction:column;min-width:0;flex:1}
 .file-name{font-size:0.84rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .file-meta{font-size:0.68rem;color:var(--text3);margin-top:2px}
-.voice-rec .record-btn{font-size:0.92rem;font-weight:700;padding:0.55rem 1.4rem;background:var(--accent);border-radius:var(--rs);color:#fff;cursor:pointer;transition:transform 0.12s ease, background 0.12s ease;-webkit-tap-highlight-color:transparent}
-.voice-rec .record-btn:active{transform:scale(0.95)}
-.voice-rec .status-text{font-family:var(--mono);font-size:0.68rem;color:var(--accent);min-width:3ch;text-align:right}
-.voice-rec .record-btn.modal-save{min-width:120px}
-.voice-rec .mic-dot{fill:none;stroke:#111;stroke-width:2.5;stroke-linecap:round;transition:fill 0.15s ease}
-.voice-rec .mic-icon{display:inline-block;width:18px;height:18px;vertical-align:middle;fill:none;stroke:#111;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
-.exit-rec .record-btn{background:#999}
+.voice-rec-row .rec-btn{min-width:140px}
+
+.voice-item.is-playing{background:var(--bg3);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.play-btn.is-playing{color:var(--on-accent);background:var(--accent)}
+.play-btn.is-playing svg{fill:var(--on-accent)}
+
+.voice-item{align-items:flex-start}
+.voice-transcript{margin-top:0.45rem;padding:0.35rem 0.6rem;border-left:2px solid var(--accent);background:var(--bg2);border-radius:0 var(--rs) var(--rs) 0;font-size:0.78rem;color:var(--text2);line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.voice-item.is-playing .voice-transcript{border-left-color:var(--text);background:var(--bg3)}
+
+.voice-playbar{position:absolute;left:0;right:0;top:0;height:2px;background:transparent;overflow:hidden;border-radius:var(--rs) var(--rs) 0 0}
+.voice-item{position:relative;overflow:hidden}
+.voice-playbar-fill{height:100%;width:0%;background:var(--accent);transition:width 0.12s linear}
+
+.secret-action-btn.is-busy{opacity:0.5;cursor:wait;animation:ringSpin 0.9s linear infinite}
+.voice-item{align-items:flex-start}
 
 .tab-header .header-actions{display:flex;gap:6px;align-items:center}
 .tab-header .add-btn{padding:0.45rem 0.7rem}
@@ -475,13 +667,35 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 /* ═══ APPEARANCE: WALLPAPERS + ALIVE COLOURS ═══ */
 #wallpaperLayer,#auroraLayer{position:absolute;inset:0;pointer-events:none;z-index:0;display:none}
 
+/* An always-present moving colour field for glass mode, so backdrop-filter has
+   something to refract even when the user has chosen no wallpaper. */
+.ambient-mesh #wallpaperLayer{display:block;background:var(--ambient-mesh)}
 
-.wall-1 #wallpaperLayer,.wall-2 #wallpaperLayer,.wall-3 #wallpaperLayer,.wall-4 #wallpaperLayer{display:block}
-#wallpaperLayer{background-size:cover;background-position:center}
+
+.wall-1 #wallpaperLayer,.wall-2 #wallpaperLayer,.wall-3 #wallpaperLayer,.wall-4 #wallpaperLayer,.wall-5 #wallpaperLayer,.wall-6 #wallpaperLayer,.wall-7 #wallpaperLayer,.wall-8 #wallpaperLayer,.wall-9 #wallpaperLayer,.wall-10 #wallpaperLayer,.wall-11 #wallpaperLayer,.wall-12 #wallpaperLayer{display:block}
+/* Live wallpapers — every backdrop is oversized and drifts on a long
+   transform-only loop, so the colour field genuinely moves instead of sitting
+   there as a flat gradient. Compositor-only: no per-frame repaint of a
+   full-screen layer. */
+#wallpaperLayer{background-size:170% 170%;background-position:50% 50%;will-change:transform;animation:wallDrift 46s ease-in-out infinite alternate}
+#wallpaperLayer::after{content:'';position:absolute;inset:-10%;background:var(--ambient-mesh);opacity:0.45;animation:wallDrift2 64s ease-in-out infinite alternate}
+@keyframes wallDrift{from{transform:translate3d(-3.5%,-2.5%,0) scale(1.06)}to{transform:translate3d(3.5%,2.5%,0) scale(1.14)}}
+@keyframes wallDrift2{from{transform:translate3d(4%,3%,0) scale(1.08)}to{transform:translate3d(-4%,-3%,0) scale(1.02)}}
+@media (prefers-reduced-motion: reduce){#wallpaperLayer,#wallpaperLayer::after{animation:none}}
 .wall-1 #wallpaperLayer{background:linear-gradient(135deg,#0f0c29 0%,#302b63 50%,#24243e 100%)}
 .wall-2 #wallpaperLayer{background:linear-gradient(160deg,#ff9a9e 0%,#fad0c4 40%,#a18cd1 100%)}
 .wall-3 #wallpaperLayer{background:linear-gradient(150deg,#0b486b 0%,#2b8a3e 55%,#f56217 130%)}
 .wall-4 #wallpaperLayer{background:linear-gradient(200deg,#42275a 0%,#734b6d 60%,#2b5876 120%)}
+.wall-5 #wallpaperLayer{background:radial-gradient(circle at 20% 20%,#1dd1a1 0%,transparent 40%),radial-gradient(circle at 80% 10%,#5f27cd 0%,transparent 45%),linear-gradient(160deg,#0f172a 0%,#111827 100%)}
+.wall-6 #wallpaperLayer{background:radial-gradient(circle at 30% 60%,#f97316 0%,transparent 45%),radial-gradient(circle at 85% 25%,#ec4899 0%,transparent 40%),linear-gradient(180deg,#1f2937 0%,#111827 100%)}
+.wall-7 #wallpaperLayer{background:radial-gradient(circle at 15% 80%,#10b981 0%,transparent 42%),radial-gradient(circle at 75% 20%,#3b82f6 0%,transparent 48%),linear-gradient(140deg,#052e16 0%,#0f172a 100%)}
+.wall-8 #wallpaperLayer{background:repeating-linear-gradient(45deg,rgba(255,255,255,0.03) 0px,rgba(255,255,255,0.03) 2px,transparent 2px,transparent 8px),linear-gradient(180deg,#020617 0%,#0f172a 100%)}
+/* Live presets (9-12): purpose-built for the drift loop — larger, softer fields
+   so the movement reads as living colour rather than a sliding image. */
+.wall-9 #wallpaperLayer{background:radial-gradient(circle at 22% 28%,#7c3aed 0%,transparent 52%),radial-gradient(circle at 78% 72%,#06b6d4 0%,transparent 55%),linear-gradient(150deg,#0f172a 0%,#111827 55%,#0b1220 100%)}
+.wall-10 #wallpaperLayer{background:radial-gradient(circle at 30% 20%,#5f27cd 0%,transparent 50%),radial-gradient(circle at 72% 66%,#0abde3 0%,transparent 52%),radial-gradient(circle at 50% 95%,#ee5a6f 0%,transparent 48%),linear-gradient(200deg,#0f172a,#020617)}
+.wall-11 #wallpaperLayer{background:radial-gradient(circle at 68% 22%,#f97316 0%,transparent 48%),radial-gradient(circle at 22% 78%,#b91c1c 0%,transparent 52%),linear-gradient(180deg,#1c1917,#0c0a09)}
+.wall-12 #wallpaperLayer{background:linear-gradient(120deg,#0b0b0d 0%,#2a2a2e 34%,#0d0d10 68%,#1f1f24 100%)}
 
 /* ═══ LIVING COLOURS: liquid aurora field (Gemini-style, GPU-cheap) ═══
    Two bugs made the old version dead: `mix-blend-mode: screen` over the   #fafafa default theme blends colour INTO white (invisible), and the
@@ -516,8 +730,21 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 @keyframes breathe6{from{opacity:0.36}to{opacity:0.6}}
 @media (prefers-reduced-motion: reduce){.alive #auroraLayer .blob{animation:none!important}}
 
-/* Content must sit above the layers */
-.main-app>*:not(#wallpaperLayer):not(#auroraLayer){position:relative;z-index:1}
+/* Content sits above the two background layers.
+   Deliberately NOT `.main-app>*:not(#wallpaperLayer):not(#auroraLayer)`: two
+   :not() id arguments gave that rule specificity (2,0,0), so it beat
+   .bottom-nav's own z-index and left the nav and every .tab-content tied at
+   z-index:1. Document order then painted the nav OVER any modal opened from
+   inside a tab, and because .tab-content was a positioned element WITH a
+   z-index it also created a stacking context — trapping that modal's
+   z-index:1100 locally, so the journal Save row sat unreachable behind the
+   nav with nothing left to scroll to.
+   position:relative with NO z-index keeps them above the layers (they are
+   positioned and later in tree order than the layers) without creating a
+   stacking context, so a modal opened inside a tab still competes in the
+   #mainApp context and its z-index can climb above the nav. */
+#wallpaperLayer,#auroraLayer{z-index:0}
+.app-header,.tab-content{position:relative}
 
 /* Privacy dim overlay — WAS COMPLETELY UNSTYLED (broken toggle). Fixed. */
 .privacy-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:800;pointer-events:none;backdrop-filter:blur(2px)}
@@ -530,7 +757,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 @keyframes orbSpin{to{transform:rotate(360deg)}}
 .cool-title{font-size:1.5rem;font-weight:700;line-height:1.2}
 .cool-sub{font-size:0.82rem;color:var(--text2);max-width:260px}
-.cool-cta{background:var(--accent);color:#fff;border:none;border-radius:24px;padding:0.7rem 1.6rem;font-size:0.9rem;font-weight:600;cursor:pointer}
+.cool-cta{background:var(--accent);color:var(--on-accent);border:none;border-radius:24px;padding:0.7rem 1.6rem;font-size:0.9rem;font-weight:600;cursor:pointer}
 .cool-cta:active{transform:scale(0.97)}
 .cool-nav{display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:0.4rem}
 .cool-back{background:none;border:none;color:var(--text3);font-size:0.85rem;cursor:pointer}
@@ -549,7 +776,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 /* ═══ PHOTOS: gallery grid + full-screen viewer + journal attachments ═══ */
 .files-view-row{display:flex;gap:6px;margin-bottom:0.6rem}
 .view-tab{background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--text2);font-family:var(--font);font-size:0.72rem;font-weight:500;padding:0.32rem 0.85rem;cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent}
-.view-tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.view-tab.active{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .photo-cell{position:relative;aspect-ratio:1;border-radius:var(--rs);overflow:hidden;background:var(--bg2);border:1px solid var(--border);cursor:pointer;transition:transform 0.12s;-webkit-tap-highlight-color:transparent}
 .photo-cell:active{transform:scale(0.97)}
@@ -647,3 +874,85 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 /* List-row extras: favorite star + mood emoji */
 .fav-star{color:var(--yellow)}
 .journal-item-mood{margin-left:3px}
+
+/* ═══ UI STYLE: GLASS — real glassmorphism ════════════════════════════════
+   The old version changed exactly 7 hand-listed selectors and reached for
+   color-mix(), which older Android WebViews simply drop — so glass silently
+   fell back to solid and looked like nothing happened. Two changes make it
+   real:
+     · the FILL TOKENS are swapped, so every surface that reads
+       var(--surface)/var(--surface2) turns translucent at once — settings
+       rows, inputs, pills, empty states, calendar, stats, toasts. No
+       selector list can miss a component, which is how the old one drifted.
+     · .ambient-mesh keeps a moving colour field behind the app, so
+       backdrop-filter always has something to refract (against a flat opaque
+       background a blur is indistinguishable from no blur).
+   Blur is applied where it is actually visible — app chrome over scrolling
+   content, and cards over the ambient field. */
+body.ui-glass{
+  --surface:var(--glass-bg);
+  --surface2:var(--glass-bg2);
+  --border:var(--glass-line);
+  --border2:var(--glass-line);
+}
+body.ui-glass .modal-box{background:var(--glass-panel)}
+body.ui-glass :is(.app-header,.bottom-nav){
+  backdrop-filter:blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(180%);
+}
+body.ui-glass :is(.secret-item,.journal-item,.totp-item,.file-item,.voice-item,.qa-card,.feat-card,.settings-item,.privacy-card,.empty-state,.calendar,.journal-stats,.prompt-card,.tool-result,.fp-item,.day-filter,.photo-cell,.jthumb,.journal-photo,.modal-actions-row,.modal-more-menu,.voice-progress-box,.jthumb-x){
+  backdrop-filter:blur(var(--glass-blur)) saturate(150%);
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(150%);
+  border:1px solid var(--glass-line);
+  box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-edge);
+}
+/* Controls get the lit top edge only — a drop shadow under every pill reads
+   as noise rather than depth. */
+body.ui-glass :is(.pill,.view-tab,.icon-btn,.add-btn,.tool-btn,.modal-cancel,.modal-save,.num-key,.cal-nav,.cool-cta,.mood-opt,.toggle-track,.clip-btn){
+  backdrop-filter:blur(12px) saturate(140%);
+  -webkit-backdrop-filter:blur(12px) saturate(140%);
+  box-shadow:inset 0 1px 0 var(--glass-edge);
+}
+body.ui-glass :is(.search-input,.clip-input,.form-input,.tool-input,.voice-search){
+  backdrop-filter:blur(12px) saturate(140%);
+  -webkit-backdrop-filter:blur(12px) saturate(140%);
+}
+
+/* ═══ UI STYLE: NEUMORPHISM — real soft UI ════════════════════════════════
+   The old version painted cards var(--bg2), which in dark is #14141f against
+   var(--surface) #13131c — a difference of two hex points, i.e. invisible —
+   and paired a 12% black shadow with a 5% WHITE highlight that cannot be
+   seen. Soft UI needs three things the old rules lacked: the surface must BE
+   the page colour (separation comes only from the shadows), the shadow pair
+   must have real contrast, and press must be an inset state. */
+body.ui-neumo{
+  --surface:var(--neu-bg);
+  --surface2:var(--neu-bg);
+  --bg:var(--neu-bg);
+  --bg2:var(--neu-bg);
+  --border:transparent;
+  --border2:transparent;
+}
+body.ui-neumo .modal-box{background:var(--neu-bg)}
+body.ui-neumo :is(.app-header,.bottom-nav){background:var(--neu-bg);box-shadow:0 8px 16px var(--neu-dark)}
+body.ui-neumo :is(.secret-item,.journal-item,.totp-item,.file-item,.voice-item,.qa-card,.feat-card,.settings-item,.privacy-card,.empty-state,.calendar,.journal-stats,.prompt-card,.tool-result,.fp-item,.day-filter,.photo-cell,.jthumb,.journal-photo,.modal-actions-row,.modal-more-menu,.voice-progress-box){
+  background:var(--neu-bg);border:none;box-shadow:var(--neu-shadow);
+}
+body.ui-neumo :is(.pill,.view-tab,.icon-btn,.add-btn,.tool-btn,.modal-cancel,.modal-save,.num-key,.cal-nav,.cool-cta,.mood-opt,.toggle-track,.clip-btn){
+  background:var(--neu-bg);border:none;box-shadow:var(--neu-shadow);
+}
+/* Inputs read as pressed into the surface. */
+body.ui-neumo :is(.search-input,.clip-input,.form-input,.tool-input,.voice-search){
+  background:var(--neu-bg);border:none;box-shadow:var(--neu-inset);
+}
+/* Press = pushed back in. This is the defining soft-UI interaction and it was
+   missing entirely before. */
+body.ui-neumo :is(.secret-item,.journal-item,.totp-item,.file-item,.qa-card,.feat-card,.privacy-card,.icon-btn,.add-btn,.num-key,.cal-nav,.view-tab,.mood-opt):active,
+body.ui-neumo .rec-btn:active,
+body.ui-neumo .tool-btn:active,
+body.ui-neumo .modal-save:active,
+body.ui-neumo .modal-cancel:active{
+  box-shadow:var(--neu-inset);
+}
+
+.journal-photo img,.journal-photo video,.jthumb img,.jthumb video{width:100%;height:100%;object-fit:cover;display:block}
