@@ -95,6 +95,21 @@ try {
 }
 
 // ---------------------------------------------------------------------------
+section('Regression: decoy deletes + TOTP generation');
+try {
+  execFileSync(process.execPath, [path.join(__dirname, 'decoy-delete.test.js')], { stdio: 'inherit' });
+  ok('deleting in the decoy vault cannot touch the real vault');
+} catch (e) {
+  fail('decoy delete isolation failed (see output above)');
+}
+try {
+  execFileSync(process.execPath, [path.join(__dirname, 'totp.test.js')], { stdio: 'inherit' });
+  ok('TOTP codes match RFC 6238 test vectors');
+} catch (e) {
+  fail('TOTP generation failed (see output above)');
+}
+
+// ---------------------------------------------------------------------------
 section('Feature logic (generator + vault health)');
 try {
   execFileSync(process.execPath, [path.join(__dirname, 'features.test.js')], { stdio: 'inherit' });

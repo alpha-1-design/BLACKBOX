@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **2FA codes never appeared (all versions up to 2.0.7)** — `generateTOTP` declared `const time` and then shifted it in the byte loop, which throws "Assignment to constant variable" on every call. The error was swallowed, so every code stayed at `------`. It is now `let`, and `ci/totp.test.js` checks the real code against the RFC 6238 SHA-1 test vectors.
+- **Deleting in the decoy vault destroyed the real vault (all versions up to 2.0.7)** — `deleteSecret`, `deleteEntry`, `deleteTotp` and `deleteNote` read the active profile's store but wrote the result back to the *real* store key, so deleting one item while in the decoy vault replaced the real vault with decoy data. They now write back to the active profile's own store. `ci/decoy-delete.test.js` covers all four stores in both directions.
+
 ## [2.0.7] — 2026-10-16
 
 ### Fixed

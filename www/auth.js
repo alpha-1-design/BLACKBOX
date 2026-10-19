@@ -127,7 +127,7 @@ const AuthModule = (() => {
 
   async function generateTOTP(secret, timestamp, digits) {
     const key = base32ToBytes(secret.replace(/\s/g, ''));
-    const time = Math.floor(timestamp / 30);
+    let time = Math.floor(timestamp / 30); // let: the loop below shifts it
     const timeBytes = new Uint8Array(8);
     for (let i = 7; i >= 0; i--) { timeBytes[i] = time & 0xff; time >>= 8; }
     const hmac = await hmacSHA1(key, timeBytes);
@@ -193,5 +193,5 @@ const AuthModule = (() => {
     setTimeout(() => t.remove(), 2000);
   }
 
-  return { init, refresh, stopTimers };
+  return { init, refresh, stopTimers, generateTOTP, base32ToBytes };
 })();

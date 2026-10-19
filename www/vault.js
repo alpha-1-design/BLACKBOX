@@ -227,7 +227,7 @@ const Vault = (() => {
     }
     return out;
   }
-  async function deleteNote(id) { const n = _raw(_sk('notes')); delete n[id]; _save(STORES.notes, n); }
+  async function deleteNote(id) { const n = _raw(_sk('notes')); delete n[id]; _save(_sk('notes'), n); }
 
   /* ── Files (legacy) ── */
   /** Store a file encrypted. `meta` is optional per-file data — currently the
@@ -296,7 +296,7 @@ const Vault = (() => {
     }
     return out;
   }
-  async function deleteSecret(id) { const s = _raw(_sk('secrets')); delete s[id]; _save(STORES.secrets, s); }
+  async function deleteSecret(id) { const s = _raw(_sk('secrets')); delete s[id]; _save(_sk('secrets'), s); }
 
   /* ── Journal ── */
   async function saveEntry(e) {
@@ -331,7 +331,7 @@ const Vault = (() => {
     }
     return out;
   }
-  async function deleteEntry(id) { const j = _raw(_sk('journal')); delete j[id]; _save(STORES.journal, j); }
+  async function deleteEntry(id) { const j = _raw(_sk('journal')); delete j[id]; _save(_sk('journal'), j); }
 
   /* ── Auth / TOTP ── */
   async function saveTotp(t) {
@@ -346,7 +346,7 @@ const Vault = (() => {
     }
     return out;
   }
-  async function deleteTotp(id) { const a = _raw(_sk('auth')); delete a[id]; _save(STORES.auth, a); }
+  async function deleteTotp(id) { const a = _raw(_sk('auth')); delete a[id]; _save(_sk('auth'), a); }
 
   /* ── Clipboard ── */
   async function saveClip(text) {
