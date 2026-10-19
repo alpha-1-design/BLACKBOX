@@ -1,0 +1,1 @@
+Two important fixes. 2FA codes now actually appear: a bug made every code show dashes, so the authenticator could not be used. And deleting an item while in the decoy vault no longer wipes your real vault. If you use the decoy PIN, please update.
