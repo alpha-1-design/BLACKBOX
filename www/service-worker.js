@@ -4,7 +4,7 @@
 // a byte-identical worker survived APK updates and kept serving the old app
 // shell forever — the 2.0.3 → 2.0.4 update froze users on stale v2.0 assets
 // and even mixed old/new JS files into one broken app.
-const VERSION = 'v2.0.18';
+const VERSION = 'v2.0.19';
 const CACHE = 'blackbox-' + VERSION;
 // Third-party runtime assets are release-independent: the transformers.js
 // speech library lives here, and transformers.js caches the ~40 MB Whisper
