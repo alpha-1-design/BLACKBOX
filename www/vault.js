@@ -23,56 +23,106 @@ const Vault = (() => {
     if (!b) { const s = crypto.getRandomValues(new Uint8Array(16)); b = btoa(String.fromCharCode(...s)); localStorage.setItem(SK, b); }
     return Uint8Array.from(atob(b), c => c.charCodeAt(0));
   }
-  async function _enc(text) {
+  /* Key is explicit so changePin can seal data under a *new* key without
+     replacing the live _key until every write has succeeded. */
+  async function _enc(text, key = _key) {
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    const ct = new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv}, _key, new TextEncoder().encode(text)));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, new TextEncoder().encode(text)));
     const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12);
     return btoa(String.fromCharCode(...out));
   }
-  async function _dec(b64) {
+  async function _dec(b64, key = _key) {
     const d = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-    const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:d.slice(0,12)}, _key, d.slice(12));
+    const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:d.slice(0,12)}, key, d.slice(12));
     return new TextDecoder().decode(pt);
   }
   function _raw(storeKey) { try { return JSON.parse(localStorage.getItem(storeKey)||'{}'); } catch { return {}; } }
   function _save(storeKey, data) { localStorage.setItem(storeKey, JSON.stringify(data)); }
 
   /* ── PIN handling ──
-     PINs are never stored in plaintext: we keep only a salted SHA-256
-     verifier. unlockWithPin() derives the AES key from the entered PIN,
-     so correctness of the PIN is proven by whether decryption succeeds. */
-  async function hashPin(pin) {
+     Verifier formats (auto-migrated on next successful unlock):
+       legacy A: plaintext PIN           (pre-2.0.4)
+       legacy B: SHA-256(salt + ':' + PIN) 64-hex  (2.0.4–2.0.x)
+       current:  pbkdf2$<iterations>$<saltB64>$<hex>  (2.1.0+)
+     A fast single SHA-256 over a 4-digit PIN is brute-forced in milliseconds
+     by anyone who reads localStorage, which defeats the 150k-iteration KDF
+     protecting the data. The current verifier uses the same PBKDF2 cost.
+     The AES key is still derived separately; proof of PIN remains decryption. */
+  const VERIFIER_ITERATIONS = 150000;
+  const PBKDF_PREFIX = 'pbkdf2$';
+
+  function _hex(buf) {
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  function _pinSalt() {
     let saltB64 = localStorage.getItem(PINHASH_SALT_KEY);
     if (!saltB64) {
       saltB64 = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
       localStorage.setItem(PINHASH_SALT_KEY, saltB64);
     }
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(saltB64 + ':' + pin));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    return { saltB64, salt: Uint8Array.from(atob(saltB64), c => c.charCodeAt(0)) };
   }
-  /** Async compare — always await. Returns true when `pin` hashes to `hashed`.
-   *  Also accepts the legacy plaintext verifier (pre-2.0.4) so users who
-   *  updated the app are not locked out; callers migrate the stored verifier
-   *  to a hash after a successful match (see app.js _upgradePin). */
-  async function verifyPin(pin, hashed) {
-    if (!hashed) return false;
-    return hashed === pin || (await hashPin(pin)) === hashed;
+  async function _pbkdf2Hex(pin, salt, iterations) {
+    const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+    return _hex(await crypto.subtle.deriveBits({name:'PBKDF2', salt, iterations, hash:'SHA-256'}, km, 256));
   }
-  /** True when a stored verifier is a salted SHA-256 hex digest (not legacy plaintext). */
-  function isPinVerifier(hashed) {
-    return typeof hashed === 'string' && /^[0-9a-f]{64}$/.test(hashed);
+  async function hashPin(pin) {
+    const { saltB64, salt } = _pinSalt();
+    return PBKDF_PREFIX + VERIFIER_ITERATIONS + '$' + saltB64 + '$' +
+      await _pbkdf2Hex(pin, salt, VERIFIER_ITERATIONS);
+  }
+  /** Constant-time-ish string compare (length leak is irrelevant for fixed-width digests). */
+  function _eq(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+    let d = 0;
+    for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    return d === 0;
+  }
+  /** Async compare — always await. Accepts all three verifier formats. */
+  async function verifyPin(pin, stored) {
+    if (!stored) return false;
+    if (typeof stored === 'string' && stored.startsWith(PBKDF_PREFIX)) {
+      const parts = stored.split('$');
+      if (parts.length !== 4) return false;
+      const iterations = Number(parts[1]);
+      if (!Number.isInteger(iterations) || iterations < 1000 || iterations > 1000000) return false;
+      let salt;
+      try { salt = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0)); } catch { return false; }
+      return _eq(await _pbkdf2Hex(pin, salt, iterations), parts[3]);
+    }
+    if (stored === pin) return true; // legacy plaintext (pre-2.0.4)
+    // legacy salted SHA-256 (2.0.4–2.0.x)
+    if (/^[0-9a-f]{64}$/.test(stored)) {
+      const { saltB64 } = _pinSalt();
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(saltB64 + ':' + pin));
+      return _eq(_hex(buf), stored);
+    }
+    return false;
+  }
+  /** True for any non-plaintext verifier (legacy SHA-256 hash or PBKDF2). */
+  function isPinVerifier(stored) {
+    return typeof stored === 'string' &&
+      (stored.startsWith(PBKDF_PREFIX) || /^[0-9a-f]{64}$/.test(stored));
+  }
+  /** True only for the current PBKDF2 format — drives auto-migration. */
+  function isCurrentPinVerifier(stored) {
+    return typeof stored === 'string' && stored.startsWith(PBKDF_PREFIX);
   }
 
-  /** Plain-PIN entry point for the active profile. */
-  async function unlockWithPin(pin) {
-    _key = await _deriveKey(pin, await _saltFor());
+  async function _cacheKey(key) {
     try { // cache raw key for this app-process so biometric re-auth works
-      const raw = await crypto.subtle.exportKey('raw', _key);
+      const raw = await crypto.subtle.exportKey('raw', key);
       const b64 = btoa(String.fromCharCode(...new Uint8Array(raw)));
       sessionStorage.setItem('bb_mkey', b64);
       sessionStorage.setItem('bb_mprofile', _profile);
       _persistKeyForBiometric(b64, _profile); // Keystore-backed so fingerprint works after process death
     } catch {}
+  }
+
+  /** Plain-PIN entry point for the active profile. */
+  async function unlockWithPin(pin) {
+    _key = await _deriveKey(pin, await _saltFor());
+    await _cacheKey(_key);
   }
 
   /* ── Biometric key persistence ──
@@ -127,38 +177,58 @@ const Vault = (() => {
     } catch {}
   }
 
-  /** Re-encrypt every store under a new PIN (used by Change PIN). Real profile only. */
+  /** Re-encrypt every store under a new PIN (used by Change PIN). Real profile only.
+   *
+   *   Atomicity: derive both keys first, build the *entire* re-encrypted
+   *   snapshot in memory with the NEW key, and only then write anything.
+   *   The previous code switched _key (and the Keystore copy) to the new PIN
+   *   before re-encrypting — any throw mid-loop left stores encrypted under
+   *   two different keys while the verifier still accepted the old PIN. */
   async function changePin(oldPin, newPin) {
     if (_profile === 'decoy') throw new Error('changePin is not available in the decoy vault');
-    await unlockWithPin(oldPin); // verify + get key for the old pin
+    const oldKey = await _deriveKey(oldPin, await _saltFor());
+    const newKey = await _deriveKey(newPin, await _saltFor());
+
+    // Decrypt with the OLD key. A wrong old PIN throws on GCM auth here,
+    // before any state is mutated.
     const snapshot = {};
-    for (const [name, key] of Object.entries(STORES)) {
+    for (const name of Object.keys(STORES)) {
       const raw = _raw(_sk(name));
       if (!Object.keys(raw).length) continue;
-      if (name === 'clip') { snapshot.clip = { text: await _dec(raw.e), ts: raw.ts }; continue; }
+      if (name === 'clip') { snapshot.clip = { text: await _dec(raw.e, oldKey), ts: raw.ts }; continue; }
       snapshot[name] = {};
       for (const [id, entry] of Object.entries(raw)) {
         const plain = {};
         for (const [field, val] of Object.entries(entry)) {
-          plain[field] = (typeof val === 'string' && /^e[A-Z]/.test(field)) ? await _dec(val) : val;
+          plain[field] = (typeof val === 'string' && /^e[A-Z]/.test(field)) ? await _dec(val, oldKey) : val;
         }
         snapshot[name][id] = plain;
       }
     }
-    // Re-encrypt with the new key, then persist atomically per store
-    await unlockWithPin(newPin);
+
+    // Encrypt with the NEW key into a detached snapshot. `_key` is untouched.
+    const sealed = {};
     for (const [name, data] of Object.entries(snapshot)) {
-      if (name === 'clip') { await saveClip(data.text); continue; }
-      const out = {};
+      if (name === 'clip') { sealed.clip = { e: await _enc(data.text, newKey), ts: data.ts }; continue; }
+      sealed[name] = {};
       for (const [id, entry] of Object.entries(data)) {
         const enc = {};
         for (const [field, val] of Object.entries(entry)) {
-          enc[field] = (typeof val === 'string' && /^e[A-Z]/.test(field)) ? await _enc(val) : val;
+          enc[field] = (typeof val === 'string' && /^e[A-Z]/.test(field)) ? await _enc(val, newKey) : val;
         }
-        out[id] = enc;
+        sealed[name][id] = enc;
       }
-      _save(_sk(name), out);
     }
+
+    // Commit only after every byte was sealed successfully.
+    for (const [name, out] of Object.entries(sealed)) {
+      if (name === 'clip') localStorage.setItem(_sk('clip'), JSON.stringify(out));
+      else _save(_sk(name), out);
+    }
+
+    // Promote the new key only on full success.
+    _key = newKey;
+    await _cacheKey(_key);
   }
 
   /* ── Profile-aware stores ──
@@ -211,6 +281,10 @@ const Vault = (() => {
     localStorage.removeItem(DKEY);
   }
 
+  /** Drop the in-memory key. Decrypted module caches are purged by app.js
+   *  _lockApp() on the same path, so no plaintext outlives the lock.
+   *  sessionStorage's raw key is kept deliberately: biometric unlock needs it
+   *  for in-session re-auth. clearAll() is the path that wipes it. */
   function lock() { _key = null; }
   function isUnlocked() { return !!_key; }
 
@@ -336,13 +410,28 @@ const Vault = (() => {
   /* ── Auth / TOTP ── */
   async function saveTotp(t) {
     const store = _raw(_sk('auth')), id = t.id || crypto.randomUUID();
-    store[id] = {id, eAccount: await _enc(t.account), eSecret: await _enc(t.secret), digits: t.digits||6, ts: Date.now()};
+    // digits/algorithm/period are metadata, not secrets — they travel in
+    // backups and changePin untouched, exactly like `digits` always has.
+    const digits = [6, 8].includes(Number(t.digits)) ? Number(t.digits) : 6;
+    const algorithm = ['SHA1', 'SHA256', 'SHA512'].includes(String(t.algorithm || '').toUpperCase())
+      ? String(t.algorithm).toUpperCase() : 'SHA1';
+    const period = Number.isInteger(Number(t.period)) && Number(t.period) >= 1 && Number(t.period) <= 300
+      ? Number(t.period) : 30;
+    store[id] = {id, eAccount: await _enc(t.account), eSecret: await _enc(t.secret), digits, algorithm, period, ts: Date.now()};
     _save(_sk('auth'), store); return id;
   }
   async function getAllTotp() {
     const r = _raw(_sk('auth')), out = [];
     for (const id of Object.keys(r).sort((a,b)=>r[b].ts-r[a].ts)) {
-      try { out.push({id, account: await _dec(r[id].eAccount), secret: await _dec(r[id].eSecret), digits: r[id].digits, ts: r[id].ts}); } catch {}
+      try {
+        out.push({
+          id, account: await _dec(r[id].eAccount), secret: await _dec(r[id].eSecret),
+          digits: [6, 8].includes(r[id].digits) ? r[id].digits : 6,
+          algorithm: ['SHA1','SHA256','SHA512'].includes(r[id].algorithm) ? r[id].algorithm : 'SHA1',
+          period: Number.isInteger(r[id].period) && r[id].period >= 1 && r[id].period <= 300 ? r[id].period : 30,
+          ts: r[id].ts,
+        });
+      } catch {}
     }
     return out;
   }
@@ -564,7 +653,7 @@ const Vault = (() => {
   function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 
   return {
-    hashPin, verifyPin, isPinVerifier,
+    hashPin, verifyPin, isPinVerifier, isCurrentPinVerifier,
     unlockWithPin, unlockReal, unlockDecoy, unlockFromSession, activeProfile,
     resetDecoyVault, changePin,
     lock, isUnlocked,

@@ -117,6 +117,12 @@ try {
 } catch (e) {
   fail('feature logic tests failed (see output above)');
 }
+try {
+  execFileSync(process.execPath, [path.join(__dirname, 'feature-extra.test.js')], { stdio: 'inherit' });
+  ok('otpauth import + sorting contracts hold');
+} catch (e) {
+  fail('extra feature tests failed (see output above)');
+}
 
 // ---------------------------------------------------------------------------
 section('UI contract tests (id references, cache, native dialogs)');

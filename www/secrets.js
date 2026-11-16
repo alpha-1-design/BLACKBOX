@@ -4,6 +4,23 @@ const SecretsModule = (() => {
   let _editingId = null;
   let _viewingId = null; // detail mode: secret is being read, not edited
   let _viewSecret = null;
+  let _sort = 'recent'; // recent | name | category
+
+  const _cmpName = (a, b) => (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase());
+  // Sorting always works on a copy so the decrypted cache (already ts-desc
+  // from getAllSecrets) is never reordered in place. 'recent' preserves it.
+  function _applySort(list) {
+    const arr = list.slice();
+    if (_sort === 'name') return arr.sort(_cmpName);
+    if (_sort === 'category') return arr.sort((a, b) =>
+      (a.category || '').toLowerCase().localeCompare((b.category || '').toLowerCase()) || _cmpName(a, b));
+    return arr;
+  }
+  function setSort(mode) {
+    if (!['recent', 'name', 'category'].includes(mode)) throw new Error('Unknown secret sort mode: ' + mode);
+    _sort = mode;
+    render(); // re-render from the cache — no re-decrypt from disk
+  }
 
   function init() {
     document.getElementById('addSecretBtn')?.addEventListener('click', () => openForm(null));
@@ -54,6 +71,7 @@ const SecretsModule = (() => {
     let filtered = _secrets;
     if (_activeCat !== 'all') filtered = filtered.filter(s => s.category === _activeCat);
     if (q) filtered = filtered.filter(s => s.name.toLowerCase().includes(q) || (s.notes||'').toLowerCase().includes(q));
+    filtered = _applySort(filtered);
 
     if (filtered.length === 0) {
       list.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="40" height="40"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><p>${q ? 'No secrets match your search.' : 'No secrets yet.<br/>Tap <strong>+ Add</strong> to store one.'}</p></div>`;
@@ -248,5 +266,17 @@ const SecretsModule = (() => {
     setTimeout(() => t.remove(), 2000);
   }
 
-  return { init, refresh };
+  /** Called by app.js _lockApp(): no decrypted secret may outlive the lock. */
+  function purge() {
+    _secrets = [];
+    _viewSecret = null;
+    _editingId = null;
+    _viewingId = null;
+    const form = document.getElementById('secretForm');
+    if (form) form.reset();
+    document.querySelectorAll('[data-secret-value], .secret-value, .secret-detail-value')
+      .forEach(el => { if ('value' in el) el.value = ''; else el.textContent = ''; });
+  }
+
+  return { init, refresh, purge, setSort };
 })();

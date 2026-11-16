@@ -1,0 +1,7 @@
+Stronger vault security and a smoother daily flow.
+
+Your PIN is now verified with PBKDF2 instead of a fast hash, changing it reseals the whole vault safely, and locking clears decrypted data from memory and the screen. 2FA import now supports SHA-256/SHA-512 and custom periods, and copying a code copies the code — not "[object Object]".
+
+You can lock manually or choose an auto-lock timeout, sort secrets and journal entries, and attach photos to journal entries directly from Photos or the camera. Opening the photo picker no longer locks the app and loses your draft. Returning users get a short "welcome back" greeting on the lock screen.
+
+Themes were tuned too: darker neumorphism, lighter glass, clearer focus rings and bigger tap targets.

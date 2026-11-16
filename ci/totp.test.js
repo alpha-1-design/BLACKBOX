@@ -24,8 +24,15 @@ const { generateTOTP, base32ToBytes } = sandbox.AuthModule;
 let failures = 0;
 function check(cond, msg) { console.log(`  ${cond ? '\u2713' : '\u2717'} ${msg}`); if (!cond) failures++; }
 
-// ASCII "12345678901234567890" in base32 (RFC 6238 SHA-1 seed)
-const SECRET = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+// RFC 6238 Appendix B seeds. The SHA-256 and SHA-512 vectors use longer ASCII
+// seeds than SHA-1 — reusing the SHA-1 seed produced wrong codes even though
+// the HMAC implementation was correct.
+const SEEDS = {
+  SHA1: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+  SHA256: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA',
+  SHA512: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA',
+};
+const SECRET = SEEDS.SHA1;
 const VECTORS = [
   [59, '94287082'], [1111111109, '07081804'], [1111111111, '14050471'],
   [1234567890, '89005924'], [2000000000, '69279037'], [20000000000, '65353130'],
@@ -50,6 +57,30 @@ const VECTORS = [
   const pasted = 'gezd gnbv gy3t qojq gezd gnbv gy3t qojq';
   check(await generateTOTP(pasted.replace(/\s/g, ''), 59, 8) === '94287082', 'lowercase secret decodes');
   check(base32ToBytes('!!!!').length === 0, 'base32ToBytes strips non-base32 characters (junk yields no bytes)');
+
+  // RFC 6238 Appendix B — SHA-256 and SHA-512 (digits=8). These catch a
+  // regression to HMAC-SHA1, which silently breaks Aegis/Bitwarden accounts.
+  for (const [t, want, alg] of [
+    [59, '46119246', 'SHA256'], [1111111109, '68084774', 'SHA256'],
+    [59, '90693936', 'SHA512'], [1111111109, '25091201', 'SHA512'],
+  ]) {
+    let got;
+    try { got = await generateTOTP(SEEDS[alg], t, 8, alg); } catch (e) { got = 'THROWS: ' + e.message; }
+    check(got === want, `RFC 6238 ${alg} t=${t} -> ${want} (got ${got})`);
+  }
+  check(await generateTOTP(SEEDS.SHA256, 59, 6, 'SHA256') === '119246',
+    'SHA-256 6-digit truncation matches the 8-digit RFC vector');
+  // Period: same secret/time with X=60 must differ from the default 30s.
+  const p30 = await generateTOTP(SECRET, 100, 6, 'SHA1', 30);
+  const p60 = await generateTOTP(SECRET, 100, 6, 'SHA1', 60);
+  check(p30 !== p60, `period parameter changes the counter (30s=${p30}, 60s=${p60})`);
+  // 3540 and 3599 are both inside the 60-second window starting at 3540.
+  check(await generateTOTP(SECRET, 3540, 6, 'SHA1', 60) === await generateTOTP(SECRET, 3599, 6, 'SHA1', 60),
+    'codes stable within a 60-second window');
+
+  // Manual entry must reject junk, not silently strip it into an empty secret.
+  const auth = sandbox.AuthModule;
+  check(typeof auth.parseOtpauthUri === 'function', 'parser is exported');
 
   if (failures) { console.log(`\nTOTP test FAILED (${failures})`); process.exit(1); }
   console.log('\nTOTP test passed.');

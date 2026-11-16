@@ -9,12 +9,13 @@ let activeTab = 'home';
 let _setupActive = false;
 let _bioReady = false; // a persisted master key exists → fingerprint can unlock
 let _animLock = false; // re-lock while the unlock animation is playing
+let _pendingLock = false; // lock requested during the unlock animation — honour it after
 let failCount = 0;
 let lockoutEnd = 0;
 let lockoutInterval = null;
 let autoLockTimer = null;
 
-let S = {blur: false, shake: false, autoLock: true, selfDestruct: false, alive: true, wallpaper: 'none', uiStyle: 'glass', voiceModel: 'Xenova/whisper-tiny.en', theme: 'dark'};
+let S = {blur: false, shake: false, autoLock: true, autoLockMs: 30000, selfDestruct: false, alive: true, wallpaper: 'none', uiStyle: 'glass', voiceModel: 'Xenova/whisper-tiny.en', theme: 'dark'};
 try { S = {...S, ...JSON.parse(localStorage.getItem(SETT_KEY) || '{}')}; } catch {}
 
 const App = { lock: _lockApp };
@@ -85,8 +86,41 @@ window.addEventListener('DOMContentLoaded', () => {
   document.querySelector('#coolModal .modal-backdrop')?.addEventListener('click', () => document.getElementById('coolModal').classList.add('hidden'));
 });
 
+/* Native file/camera pickers make the WebView document hidden. Locking on
+   that event wiped the in-progress journal form (and its decrypted photos)
+   the moment the gallery opened. Picker modules announce open/close so we
+   can ignore backgrounding until the picker returns. */
+let _pickerOpen = false;
+let _pickerGrace = null;
+window.BLACKBOX_PICKER = {
+  open() {
+    _pickerOpen = true;
+    if (_pickerGrace) { clearTimeout(_pickerGrace); _pickerGrace = null; }
+    _clearAutoLock();
+  },
+  isOpen() { return _pickerOpen || !!_pickerGrace; },
+  /** Click any hidden file input through here so the vault never locks while
+   *  the native picker is on screen. */
+  click(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    this.open();
+    el.click();
+  },
+  close() {
+    // The 'change' event can fire before focus returns; a short grace period
+    // covers the picker's teardown animation before locking resumes.
+    if (_pickerGrace) clearTimeout(_pickerGrace);
+    _pickerGrace = setTimeout(() => {
+      _pickerOpen = false;
+      _pickerGrace = null;
+      _resetAutoLock();
+    }, 500);
+  },
+};
+
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && Vault.isUnlocked()) _lockApp();
+  if (document.hidden && !_pickerOpen && Vault.isUnlocked()) _lockApp();
 });
 
 /* ══════════════════════════════════════════════
@@ -180,6 +214,7 @@ function _initDialogs() { Dialog.init(); }
 function _initLock() {
   PinBuddy.attach(); // the lock-screen character (buddy.js)
   document.querySelectorAll('#numpad .num-key[data-digit]').forEach(b => b.addEventListener('click', () => _addDigit(b.dataset.digit)));
+  document.getElementById('lockNowBtn')?.addEventListener('click', _lockApp);
   document.getElementById('delBtn')?.addEventListener('click', _delDigit);
   document.getElementById('decoyBtn')?.addEventListener('click', _triggerPanic);
   document.getElementById('panicBtn')?.addEventListener('click', _triggerPanic);
@@ -196,7 +231,21 @@ function _initLock() {
     }
   });
 
-  if (!PIN) _showSetupPinModal();
+  if (!PIN) {
+    _showSetupPinModal();
+  } else {
+    // A returning user sees a real welcome, not a blank lock screen. This is
+    // derived from the stored PIN only — never from decrypted vault data — so
+    // it reveals nothing about the contents. Fades after a few seconds.
+    const welcome = document.getElementById('lockWelcome');
+    if (welcome) {
+      const hour = new Date().getHours();
+      const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+      welcome.textContent = `${greeting} — welcome back.`;
+      welcome.classList.remove('hidden');
+      setTimeout(() => welcome.classList.add('hidden'), 5000);
+    }
+  }
 }
 
 function _initBiometric() {
@@ -271,6 +320,10 @@ function _showSetupPinModal() {
       _bioReady = true; // key persisted → fingerprint unlock available
       _setupActive = false;
       confirmModal.classList.add('hidden');
+      // BUG: the original setup flow stopped here. The PIN was stored and the
+      // key derived, but _showApp() was never called — a first-time user sat
+      // on the lock screen with a working vault they could not enter.
+      _showApp();
       if (window.Capacitor?.Plugins?.ShieldBiometric) {
         try {
           const res = await window.Capacitor.Plugins.ShieldBiometric.isAvailable();
@@ -368,7 +421,8 @@ async function _verifyPin() {
   _renderDots();
 
   if (DECOY_PIN && await Vault.verifyPin(entered, DECOY_PIN)) {
-    if (!Vault.isPinVerifier(DECOY_PIN)) { // migrate legacy plaintext decoy verifier too
+    // Migrate any legacy verifier (plaintext or SHA-256) to PBKDF2 on use.
+    if (!Vault.isCurrentPinVerifier(DECOY_PIN)) {
       DECOY_PIN = await Vault.hashPin(entered);
       localStorage.setItem(DECOY_KEY, DECOY_PIN);
     }
@@ -377,11 +431,11 @@ async function _verifyPin() {
   }
   if (PIN && await Vault.verifyPin(entered, PIN)) {
     failCount = 0;
-    // ── Legacy migration (pre-2.0.4 installs): the stored verifier was the
-    // plaintext PIN. Accept it, then replace it with a salted hash so it is
-    // never persisted again. Data itself was always AES-encrypted with a key
-    // derived from the PIN, so the same digits still decrypt everything.
-    if (!Vault.isPinVerifier(PIN)) {
+    // ── Verifier migration: plaintext (pre-2.0.4) and fast salted SHA-256
+    // (2.0.4–2.0.x) both unlock, then get rewritten as PBKDF2 so a leaked
+    // localStorage dump no longer yields the PIN in milliseconds. Data was
+    // always AES-encrypted under a KDF-derived key, so the digits still work.
+    if (!Vault.isCurrentPinVerifier(PIN)) {
       PIN = await Vault.hashPin(entered);
       localStorage.setItem(PIN_KEY, PIN);
     }
@@ -470,6 +524,9 @@ function _showApp() {
     requestAnimationFrame(() => requestAnimationFrame(() => {
       app.classList.remove('entering');
       _animLock = false;
+      // A visibilitychange during the fade used to be dropped by _lockApp's
+      // `_animLock` guard, leaving an unlocked vault in the background.
+      if (_pendingLock) { _pendingLock = false; _lockApp(); }
     }));
   }, 380);
   _resetAutoLock();
@@ -491,13 +548,33 @@ function _closeAllOverlays() {
   document.getElementById('voiceProgressPanel')?.classList.add('hidden');
   if (typeof VoiceModule !== 'undefined' && VoiceModule.abort) VoiceModule.abort();
   if (typeof FilesManager !== 'undefined' && FilesManager.closeViewer) FilesManager.closeViewer();
+  // Decrypted values sitting in form controls and text nodes are plaintext
+  // even after the modules drop their arrays. Clear them before the lock
+  // screen paints. Form reset also covers the change-PIN/decoy prompts.
+  document.querySelectorAll('input, textarea').forEach(el => {
+    // Keep toggles/settings intact — only text-bearing fields can hold secrets.
+    if (el.type === 'checkbox' || el.type === 'radio') return;
+    el.value = '';
+  });
+  document.querySelectorAll('.secret-value, .secret-detail-value, .voice-transcript, [data-secret-value], [data-transcript-body]')
+    .forEach(el => { el.textContent = ''; });
   _lastActivityAt = 0;
 }
 
+/** Drop every in-memory decrypted cache. Kept separate from _closeAllOverlays
+ *  so tests and future callers can purge without touching the DOM. */
+function _purgePlaintext() {
+  try { SecretsModule?.purge?.(); } catch {}
+  try { JournalModule?.purge?.(); } catch {}
+  try { FilesManager?.purge?.(); } catch {}
+  try { AuthModule?.stopTimers?.(); } catch {}
+}
+
 function _lockApp() {
-  if (_animLock) return; // don't fight the unlock transition
+  if (_animLock) { _pendingLock = true; return; } // queue, don't drop
   if (!Vault.isUnlocked() && document.getElementById('lockScreen').classList.contains('active')) return;
   Vault.lock();
+  _purgePlaintext();
   AuthModule.stopTimers();
   _closeAllOverlays();
   const lock = document.getElementById('lockScreen');
@@ -516,8 +593,10 @@ function _lockApp() {
 /* ── AUTO-LOCK ── */
 function _resetAutoLock() {
   if (!S.autoLock) return;
+  const ms = Number(S.autoLockMs);
+  if (!Number.isFinite(ms) || ms <= 0) return; // 0 = never
   _clearAutoLock();
-  autoLockTimer = setTimeout(_lockApp, 30000);
+  autoLockTimer = setTimeout(_lockApp, ms);
 }
 
 function _clearAutoLock() {
@@ -596,14 +675,28 @@ function _triggerPanic() {
 
 /* ── NAV ── */
 function _initNav() {
-  document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => _switchTab(b.dataset.tab)));
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.addEventListener('click', () => _switchTab(b.dataset.tab));
+    b.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _switchTab(b.dataset.tab); }
+    });
+  });
   document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => _switchTab(b.dataset.goto)));
+  // #updateStatus is a div made focusable for keyboard parity with the
+  // settings buttons; native buttons already handle Enter/Space themselves.
+  document.getElementById('updateStatus')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); }
+  });
 }
 
 function _switchTab(tab) {
   if (tab === activeTab) return;
   activeTab = tab;
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    const on = b.dataset.tab === tab;
+    b.classList.toggle('active', on);
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
   document.querySelectorAll('.tab-content').forEach(tc => {
     tc.classList.toggle('hidden', tc.id !== 'tab-' + tab);
     tc.classList.toggle('active', tc.id === 'tab-' + tab);
@@ -641,6 +734,37 @@ function _initSettings() {
     v ? PrivacyOverlay.enable() : PrivacyOverlay.disable();
     _saveSett();
   });
+  // Auto-lock interval: 0 means never. Changing it re-arms the timer from now.
+  const lockSel = document.getElementById('autoLockTimeout');
+  if (lockSel) {
+    lockSel.value = String(S.autoLockMs);
+    lockSel.addEventListener('change', () => {
+      S.autoLockMs = Number(lockSel.value) || 0;
+      _saveSett();
+      _resetAutoLock();
+      const sub = document.querySelector('#autoLockTimeout + small, #autoLockTimeout ~ small');
+      if (sub) sub.textContent = S.autoLockMs ? `Seals the vault after ${S.autoLockMs / 1000}s idle` : 'Never seals automatically';
+    });
+  }
+  // Sorting is a view preference — re-render from the in-memory decrypted
+  // cache, never re-derive the key. Selects are optional so older cached
+  // HTML during an OTA update cannot break boot.
+  const secSort = document.getElementById('secretSort');
+  if (secSort) secSort.addEventListener('change', () => SecretsModule.setSort?.(secSort.value));
+  const jrnSort = document.getElementById('journalSort');
+  if (jrnSort) jrnSort.addEventListener('change', () => JournalModule.setSort?.(jrnSort.value));
+
+  document.getElementById('importTotpUriBtn')?.addEventListener('click', async () => {
+    const uri = await uiPrompt('Import 2FA', 'Paste an otpauth:// URI');
+    if (uri === null) return;
+    try {
+      const n = await AuthModule.importUri(uri.trim());
+      _toast(n ? `Imported ${n} authenticator` : 'Nothing to import', 'green');
+    } catch (err) {
+      await uiAlert('Import Failed', err?.message || 'That is not a valid otpauth:// URI.');
+    }
+  });
+
   _syncToggle('selfDestructToggle', S.selfDestruct, v => { S.selfDestruct = v; _saveSett(); });
   const shakeEl = document.getElementById('shakeToggle');
   if (shakeEl) {
@@ -678,6 +802,10 @@ function _initSettings() {
   document.getElementById('clearVaultBtn')?.addEventListener('click', async () => {
     if (await uiConfirm('Clear All Data', 'Delete ALL data permanently? This cannot be undone.', { danger: true, okLabel: 'Delete Everything' })) {
       Vault.clearAll();
+      // clearAll() nulls the key but used to leave the app showing an empty
+      // shell with every subsequent save throwing. Return to a clean state.
+      _purgePlaintext();
+      _lockApp();
       _toast('Vault cleared', 'red');
     }
   });

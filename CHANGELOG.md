@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-11-16
+
+### Security
+- **PIN verifier upgraded to PBKDF2** — legacy plaintext and fast SHA-256 verifiers are now accepted on unlock and silently rewritten as `pbkdf2$150000$…`; a stolen `localStorage` dump no longer yields a 4-digit PIN in milliseconds. The verifier salt is stable, and wrong verifiers are rejected without throwing.
+- **Changing the PIN is now atomic** — both keys are derived and the entire vault is re-sealed in memory before anything is written. A wrong old PIN fails during decryption and leaves every store byte-identical; the live key is promoted only after all stores are sealed.
+- **Lock now actually forgets plaintext** — decrypted secret, journal, file and TOTP caches are purged, TOTP DOM nodes are reset to `------`, text-bearing form controls are cleared, and all overlays — including dialogs rendered above the lock screen — are closed. The retained session key is only for biometric re-auth.
+- **Content Security Policy added** — local assets plus a narrow allowlist, with a nonce for the service-worker bootstrap. Inline handlers removed.
+
+### Added
+- **Returning-launch welcome** — a time-of-day greeting ("Good afternoon — welcome back.") appears on the lock screen for returning users and fades after five seconds. It is derived only from the stored PIN, so it reveals nothing about vault contents.
+- **`otpauth://` TOTP import** — parses issuer/account labels, Base32 secrets, digits, algorithm and period. SHA-256/SHA-512 and custom periods are carried through storage, backup and PIN changes; HOTP and malformed URIs are rejected with clear errors.
+- **Configurable auto-lock** — Settings now offers 30s/1m/5m/15m/Never, persisted as `autoLockMs`, plus a **Lock now** button in the header.
+- **Sorting** — Secrets and Journal each gained a sort control (recent / name or title / category or oldest), composed with search and category filters.
+- **Journal media actions** — **From Photos**, **Take Photo** and **Any file** attach encrypted media directly to an entry. The native picker no longer triggers the background lock, so a draft is not destroyed when the gallery opens.
+- **Browser regression suites** — `ci/browser-check.py`, `ci/e2e-flow.py`, `ci/e2e-all.py` and `ci/e2e-picker-welcome.py` drive real Chrome through setup, every tab, PIN change, decoy, picker, welcome and lock flows.
+
+### Fixed
+- **TOTP copy copied `"[object Object]"`** — `_codes[id]` stores `{window, code}`; the copy button now passes the code string through `EncClipboard.copy()` like every other sensitive copy path.
+- **TOTP ignored real account settings** — custom `period` and SHA-256/SHA-512 algorithms were silently discarded, producing permanently invalid codes for Aegis/Bitwarden accounts. Generation, rendering, import and storage now agree, verified against RFC 6238 vectors for all three algorithms.
+- **Manual Base32 entry accepted junk** — invalid characters were silently stripped into a secret that could never generate a valid code. Entry now uses the strict validator shared with URI import, and unsupported digit counts are rejected instead of coerced.
+- **First-time setup stored a PIN but never opened the app** — a new user was left on the lock screen with a working vault they could not enter. Setup now calls `_showApp()` after confirmation.
+- **Opening a file/camera picker locked the vault** — Android fires `visibilitychange` when the native picker covers the WebView. The app now suppresses that lock while a picker is open and re-arms it after a short grace period.
+- **Journal edit was too prominent in read mode** — Edit now lives in the three-dot menu, matching the read-first intent.
+- **Glass felt heavy and neumorphism was too bright** — glass blur reduced to 8–10px with a simpler ambient field; neumorphic surfaces darkened with a real inset press state.
+- **Accessibility polish** — visible `:focus-visible` ring, 44px tap targets for small controls, stronger `--text3` contrast, `aria-current` on the active tab, keyboard support for status/nav controls, and a favicon.
+
+### Changed
+- Version sources are unified at `2.1.0` (Android `versionCode` 11); the service-worker cache fuse moved from `v2.0.19` to `v2.1.0` so updating installs get fresh assets without purging the Whisper model cache.
+- E2E checks wait on real state changes rather than fixed sleeps because PBKDF2 derivation can take several seconds in headless Chrome.
+
 ## [2.0.8] — 2026-10-19
 
 ### Fixed

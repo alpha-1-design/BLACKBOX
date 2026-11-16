@@ -13,6 +13,22 @@ const JournalModule = (() => {
   let _dayFilter = null;    // 'YYYY-MM-DD' when the list is scoped to a single day
   let _promptDismissed = false;
   let _promptIdx = -1;
+  let _journalSort = 'recent'; // recent | oldest | title
+
+  const _cmpTitle = (a, b) => (a.title || '').toLowerCase().localeCompare((b.title || '').toLowerCase());
+  // Sorting works on a copy so the decrypted cache (already ts-desc from
+  // getAllEntries) is never reordered in place. 'recent' preserves it.
+  function _applyJournalSort(list) {
+    const arr = list.slice();
+    if (_journalSort === 'oldest') return arr.sort((a, b) => a.ts - b.ts);
+    if (_journalSort === 'title') return arr.sort(_cmpTitle);
+    return arr;
+  }
+  function setSort(mode) {
+    if (!['recent', 'oldest', 'title'].includes(mode)) throw new Error('Unknown journal sort mode: ' + mode);
+    _journalSort = mode;
+    render(); // re-render from the cache — no re-decrypt from disk
+  }
 
   const MOODS = [
     { e: '😞', l: 'Rough' }, { e: '😕', l: 'Low' }, { e: '😐', l: 'Okay' },
@@ -65,7 +81,6 @@ const JournalModule = (() => {
     document.getElementById('cancelJournalBtn')?.addEventListener('click', () => closeForm(false));
     document.getElementById('journalDelete')?.addEventListener('click', deleteEditing);
     document.getElementById('journalMoreEdit')?.addEventListener('click', () => { _closeMenu(); editViewing(); });
-    document.getElementById('journalReadEdit')?.addEventListener('click', editViewing);
     document.getElementById('journalReadClose')?.addEventListener('click', () => closeForm(false));
     document.getElementById('journalMoreBtn')?.addEventListener('click', e => {
       e.stopPropagation();
@@ -78,8 +93,12 @@ const JournalModule = (() => {
         menu.classList.remove('open');
       }
     });
-    document.getElementById('journalAttachBtn')?.addEventListener('click', () => document.getElementById('journalPhotoInput')?.click());
-    document.getElementById('journalPhotoInput')?.addEventListener('change', async e => {
+    const openPicker = id => window.BLACKBOX_PICKER?.click(id);
+    document.getElementById('journalPhotosBtn')?.addEventListener('click', () => openPicker('journalPhotoInput'));
+    document.getElementById('journalCameraBtn')?.addEventListener('click', () => openPicker('journalCameraInput'));
+    document.getElementById('journalAttachBtn')?.addEventListener('click', () => openPicker('journalPhotoInput'));
+    const onPicked = async e => {
+      window.BLACKBOX_PICKER?.close();
       const files = Array.from(e.target.files || []);
       let failed = 0;
       for (const f of files) {
@@ -92,7 +111,12 @@ const JournalModule = (() => {
       e.target.value = '';
       _renderThumbs();
       if (failed) await uiAlert('Photos', `${failed} photo${failed > 1 ? 's' : ''} could not be encrypted and ${failed > 1 ? 'were' : 'was'} skipped.`);
-    });
+    };
+    document.getElementById('journalPhotoInput')?.addEventListener('change', onPicked);
+    document.getElementById('journalCameraInput')?.addEventListener('change', onPicked);
+    // Cancel from the native picker fires no 'change'. Focus returning to the
+    // WebView is the only reliable signal, so close the guard there too.
+    window.addEventListener('focus', () => { if (window.BLACKBOX_PICKER?.isOpen()) window.BLACKBOX_PICKER.close(); });
     document.getElementById('journalMoreFav')?.addEventListener('click', () => { _closeMenu(); toggleFav(); });
     document.getElementById('journalMoreExport')?.addEventListener('click', () => { _closeMenu(); exportEntry(); });
     document.getElementById('journalCalBtn')?.addEventListener('click', _toggleCalendar);
@@ -159,6 +183,7 @@ const JournalModule = (() => {
     else if (_activeCat !== 'all') filtered = filtered.filter(e => e.category === _activeCat);
     if (_dayFilter) filtered = filtered.filter(e => _dayKey(e.ts) === _dayFilter);
     if (q) filtered = filtered.filter(e => e.title.toLowerCase().includes(q) || e.body.toLowerCase().includes(q) || (e.tags || []).join(' ').toLowerCase().includes(q));
+    filtered = _applyJournalSort(filtered);
 
     if (filtered.length === 0) {
       list.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="40" height="40"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><p>${q ? 'No entries match your search.' : _dayFilter ? 'No entries on this day.' : _activeCat === '__fav' ? 'No favorites yet — open an entry and star it from the ⋯ menu.' : 'No journal entries yet.<br/>Tap <strong>+ Add</strong> to write one.'}</p></div>`;
@@ -557,5 +582,18 @@ const JournalModule = (() => {
     await refresh();
   }
 
-  return { init, refresh };
+  /** Wipe decrypted entries and every live object URL on lock. */
+  function purge() {
+    _entries = [];
+    _images = [];
+    _pendingImages.clear();
+    _revokeUrls(_thumbUrls); _thumbUrls = [];
+    _revokeUrls(_readUrls);  _readUrls = [];
+    _mood = 0;
+    _fav = false;
+    const form = document.getElementById('journalForm');
+    if (form) form.reset();
+  }
+
+  return { init, refresh, purge, setSort };
 })();

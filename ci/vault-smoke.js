@@ -41,28 +41,53 @@ let failures = 0;
 function check(cond, msg) { console.log(`  ${cond ? '\u2713' : '\u2717'} ${msg}`); if (!cond) failures++; }
 
 (async () => {
-  // 1. PIN verifier round-trip
+  // 1. PIN verifier round-trip (PBKDF2 format, v2.1.0+)
   const h = await Vault.hashPin('1234');
-  check(h.length === 64, 'hashPin returns a SHA-256 hex digest');
+  check(h.startsWith('pbkdf2$150000$') && h.split('$').length === 4,
+    'hashPin returns a salted PBKDF2 verifier with iteration count');
+  check(!/^pbkdf2\$/.test('1234') && h.length > 64, 'verifier is not a fast SHA-256 digest');
   check(await Vault.verifyPin('1234', h), 'verifyPin accepts the right PIN');
   check(!(await Vault.verifyPin('9999', h)), 'verifyPin rejects a wrong PIN');
+  check(h === await Vault.hashPin('1234'), 'verifier salt is stable across restarts');
+  const vSalt = atob(h.split('$')[2]);
+  check(vSalt.length === 16, 'verifier salt is 16 random bytes');
+  check(h !== await Vault.hashPin('1235'), 'different PINs produce different verifiers');
 
   // 1b. Legacy plaintext verifiers (pre-2.0.4 installs) must still unlock —
   // the v2.0.4 hash change locked updating users out. Verify + migrate.
   check(await Vault.verifyPin('4321', '4321'), 'verifyPin accepts a legacy plaintext verifier');
   check(!(await Vault.verifyPin('0000', '4321')), 'verifyPin rejects the wrong legacy plaintext');
   check(!Vault.isPinVerifier('4321'), 'isPinVerifier flags plaintext as legacy');
-  check(Vault.isPinVerifier(h), 'isPinVerifier accepts a salted hash');
+  check(Vault.isPinVerifier(h) && Vault.isCurrentPinVerifier(h), 'isPinVerifier/isCurrentPinVerifier accept PBKDF2');
+  check(!Vault.isCurrentPinVerifier('4321'), 'isCurrentPinVerifier flags plaintext as legacy');
+  // 1c. Legacy SHA-256 verifier (2.0.4–2.0.x) must still unlock, then migrate.
+  const legacySalt = store['bb_pin_hash_salt'];
+  const legacyBuf = await webcrypto.subtle.digest('SHA-256', new TextEncoder().encode(legacySalt + ':9876'));
+  const legacyHex = Array.from(new Uint8Array(legacyBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  check(await Vault.verifyPin('9876', legacyHex), 'verifyPin accepts a legacy SHA-256 verifier');
+  check(!(await Vault.verifyPin('0000', legacyHex)), 'verifyPin rejects a wrong PIN against legacy hash');
+  check(Vault.isPinVerifier(legacyHex) && !Vault.isCurrentPinVerifier(legacyHex), 'legacy SHA-256 flagged for migration');
+  check(await Vault.verifyPin('1234', 'pbkdf2$1000$not-base64!!$deadbeef') === false,
+    'malformed PBKDF2 verifier is rejected without throwing');
 
   // 2. Seed data under PIN A
   await Vault.unlockWithPin('1111');
   await Vault.saveSecret({ name: 'OpenAI', value: 'sk-super-secret', category: 'api', notes: 'prod key' });
   await Vault.saveEntry({ title: 'My Note', body: 'private thoughts', category: 'personal' });
-  await Vault.saveTotp({ account: 'GitHub', secret: 'JBSWY3DPEHPK3PXP', digits: 6 });
+  await Vault.saveTotp({ account: 'GitHub', secret: 'JBSWY3DPEHPK3PXP', digits: 8, algorithm: 'SHA256', period: 60 });
   await Vault.saveClip('clipboard text');
   Vault.lock();
 
-  // 3. Change PIN 1111 -> 2222
+  // 3. Change PIN 1111 -> 2222 — with a wrong old PIN nothing may change
+  const before = JSON.stringify(store['bb_secrets']);
+  let wrongRejected = false;
+  try { await Vault.changePin('9999', '3333'); } catch { wrongRejected = true; }
+  check(wrongRejected, 'changePin with a wrong old PIN throws');
+  check(JSON.stringify(store['bb_secrets']) === before, 'failed changePin leaves ciphertext untouched');
+  await Vault.unlockWithPin('1111');
+  check((await Vault.getAllSecrets()).length === 1, 'old PIN still reads data after a failed change');
+  Vault.lock();
+
   await Vault.changePin('1111', '2222');
 
   // 4. New PIN must decrypt everything
@@ -73,6 +98,8 @@ function check(cond, msg) { console.log(`  ${cond ? '\u2713' : '\u2717'} ${msg}`
   check(entries.length === 1 && entries[0].body === 'private thoughts', 'journal readable under new PIN');
   const totps = await Vault.getAllTotp();
   check(totps.length === 1 && totps[0].secret === 'JBSWY3DPEHPK3PXP', 'TOTP readable under new PIN');
+  check(totps[0].digits === 8 && totps[0].algorithm === 'SHA256' && totps[0].period === 60,
+    `TOTP metadata survives PIN change (got ${totps[0].digits}/${totps[0].algorithm}/${totps[0].period})`);
   const clip = await Vault.getClip();
   check(clip && clip.text === 'clipboard text', 'clipboard readable under new PIN');
 

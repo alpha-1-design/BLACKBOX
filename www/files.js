@@ -21,8 +21,12 @@ const FilesManager = (() => {
       document.getElementById('filesSection').classList.add('hidden');
       _revokeGridUrls(); // thumbnails are rebuilt on the next open
     });
-    document.getElementById('importFileBtn')?.addEventListener('click', () => document.getElementById('fileImportInput')?.click());
+    document.getElementById('importFileBtn')?.addEventListener('click', () => {
+      window.BLACKBOX_PICKER?.open();
+      document.getElementById('fileImportInput')?.click();
+    });
     document.getElementById('fileImportInput')?.addEventListener('change', async e => {
+      window.BLACKBOX_PICKER?.close();
       const f = e.target.files[0];
       if (!f) return;
       try {
@@ -327,5 +331,17 @@ const FilesManager = (() => {
     setTimeout(() => t.remove(), 2500);
   }
 
-  return { init, refresh, openViewer, closeViewer };
+  /** Wipe decrypted file metadata and revoke every preview URL on lock. */
+  function purge() {
+    closeViewer();
+    _revokeGridUrls();
+    _files = [];
+    _pkgFile = null;
+    _openFile = null;
+    _opened = null;
+    _viewerIds = [];
+    _viewerMeta = new Map();
+  }
+
+  return { init, refresh, openViewer, closeViewer, purge };
 })();
